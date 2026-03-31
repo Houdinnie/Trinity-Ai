@@ -1,0 +1,59 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile information",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Unique user ID" },
+        "email": { "type": "string", "format": "email", "description": "User email address" },
+        "displayName": { "type": "string", "description": "User display name" },
+        "photoURL": { "type": "string", "description": "User profile picture URL" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Account creation timestamp" }
+      },
+      "required": ["uid", "email"]
+    },
+    "Analysis": {
+      "title": "Analysis",
+      "description": "AI chart analysis result",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "ID of the user who performed the analysis" },
+        "imageUrl": { "type": "string", "description": "URL of the uploaded chart image" },
+        "pair": { "type": "string", "description": "Trading pair analyzed" },
+        "result": { "type": "string", "description": "The AI generated analysis in JSON format" },
+        "timestamp": { "type": "string", "format": "date-time", "description": "When the analysis was performed" }
+      },
+      "required": ["userId", "imageUrl", "result", "timestamp"]
+    },
+    "PriceAlert": {
+      "title": "PriceAlert",
+      "description": "Automated price alert for a trading pair",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "ID of the user who created the alert" },
+        "pair": { "type": "string", "description": "Trading pair for the alert" },
+        "condition": { "type": "string", "enum": ["ABOVE", "BELOW"], "description": "Alert condition" },
+        "value": { "type": "number", "description": "Price level to trigger the alert" },
+        "isActive": { "type": "boolean", "description": "Whether the alert is currently active" },
+        "isTriggered": { "type": "boolean", "description": "Whether the alert has been triggered" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "When the alert was created" }
+      },
+      "required": ["userId", "pair", "condition", "value", "isActive", "isTriggered", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{uid}": {
+      "schema": "User",
+      "description": "User profiles"
+    },
+    "/analyses/{analysisId}": {
+      "schema": "Analysis",
+      "description": "Chart analysis history"
+    },
+    "/alerts/{alertId}": {
+      "schema": "PriceAlert",
+      "description": "User price alerts"
+    }
+  }
+}
