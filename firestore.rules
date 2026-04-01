@@ -23,7 +23,18 @@ service cloud.firestore {
     function isValidUser(data) {
       return data.keys().hasAll(['uid', 'email']) &&
              data.uid is string &&
-             data.email is string;
+             data.email is string &&
+             (!('riskTolerance' in data) || data.riskTolerance in ['CONSERVATIVE', 'MODERATE', 'AGGRESSIVE']) &&
+             (!('experienceLevel' in data) || data.experienceLevel in ['BEGINNER', 'ADVANCED']) &&
+             (!('tradingGoal' in data) || data.tradingGoal in ['INCOME', 'GROWTH', 'DISCIPLINE']) &&
+             (!('accountBalance' in data) || data.accountBalance is number) &&
+             (!('aiSettings' in data) || (
+               data.aiSettings is map &&
+               data.aiSettings.keys().hasAll(['breakoutSensitivity', 'reversalSensitivity', 'anomalySensitivity']) &&
+               data.aiSettings.breakoutSensitivity is number &&
+               data.aiSettings.reversalSensitivity is number &&
+               data.aiSettings.anomalySensitivity is number
+             ));
     }
 
     function isValidAnalysis(data) {
@@ -31,7 +42,19 @@ service cloud.firestore {
              data.userId == request.auth.uid &&
              data.imageUrl is string &&
              data.result is string &&
-             data.timestamp is timestamp;
+             data.timestamp is timestamp &&
+             (!('outcome' in data) || data.outcome in ['WIN', 'LOSS', 'PENDING']) &&
+             (!('aiFeedback' in data) || data.aiFeedback is string);
+    }
+
+    function isValidJournal(data) {
+      return data.keys().hasAll(['userId', 'title', 'content', 'timestamp']) &&
+             data.userId == request.auth.uid &&
+             data.title is string && data.title.size() > 0 && data.title.size() < 200 &&
+             data.content is string && data.content.size() > 0 && data.content.size() < 10000 &&
+             data.timestamp is timestamp &&
+             (!('tags' in data) || data.tags is list) &&
+             (!('analysisId' in data) || data.analysisId is string);
     }
 
     function isValidAlert(data) {
@@ -45,6 +68,18 @@ service cloud.firestore {
              data.createdAt is timestamp;
     }
 
+    function isValidTrade(data) {
+      return data.keys().hasAll(['userId', 'pair', 'type', 'entryPrice', 'stopLoss', 'takeProfit', 'status', 'timestamp']) &&
+             data.userId == request.auth.uid &&
+             data.pair is string &&
+             data.type in ['LONG', 'SHORT'] &&
+             data.entryPrice is number &&
+             data.stopLoss is number &&
+             data.takeProfit is number &&
+             data.status in ['OPEN', 'CLOSED'] &&
+             data.timestamp is timestamp;
+    }
+
     // ===============================================================
     // Match Rules
     // ===============================================================
@@ -56,6 +91,14 @@ service cloud.firestore {
     match /analyses/{analysisId} {
       allow read: if isDocOwner();
       allow create: if isAuthenticated() && isValidAnalysis(request.resource.data);
+      allow update: if isDocOwner() && isValidAnalysis(request.resource.data);
+      allow delete: if isDocOwner();
+    }
+
+    match /journal/{entryId} {
+      allow read: if isDocOwner();
+      allow create: if isAuthenticated() && isValidJournal(request.resource.data);
+      allow update: if isDocOwner() && isValidJournal(request.resource.data);
       allow delete: if isDocOwner();
     }
 
@@ -63,6 +106,13 @@ service cloud.firestore {
       allow read: if isDocOwner();
       allow create: if isAuthenticated() && isValidAlert(request.resource.data);
       allow update: if isDocOwner() && isValidAlert(request.resource.data);
+      allow delete: if isDocOwner();
+    }
+
+    match /simulated_trades/{tradeId} {
+      allow read: if isDocOwner();
+      allow create: if isAuthenticated() && isValidTrade(request.resource.data);
+      allow update: if isDocOwner() && isValidTrade(request.resource.data);
       allow delete: if isDocOwner();
     }
   }

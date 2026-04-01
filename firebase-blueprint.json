@@ -9,7 +9,19 @@
         "email": { "type": "string", "format": "email", "description": "User email address" },
         "displayName": { "type": "string", "description": "User display name" },
         "photoURL": { "type": "string", "description": "User profile picture URL" },
-        "createdAt": { "type": "string", "format": "date-time", "description": "Account creation timestamp" }
+        "createdAt": { "type": "string", "format": "date-time", "description": "Account creation timestamp" },
+        "riskTolerance": { "type": "string", "enum": ["CONSERVATIVE", "MODERATE", "AGGRESSIVE"], "description": "User risk tolerance level" },
+        "experienceLevel": { "type": "string", "enum": ["BEGINNER", "ADVANCED"], "description": "User trading experience level" },
+        "tradingGoal": { "type": "string", "enum": ["INCOME", "GROWTH", "DISCIPLINE"], "description": "User trading goal" },
+        "accountBalance": { "type": "number", "description": "User's current account balance" },
+        "aiSettings": {
+          "type": "object",
+          "properties": {
+            "breakoutSensitivity": { "type": "number", "description": "Sensitivity for breakout detection (0-100)" },
+            "reversalSensitivity": { "type": "number", "description": "Sensitivity for reversal detection (0-100)" },
+            "anomalySensitivity": { "type": "number", "description": "Sensitivity for anomaly detection (0-100)" }
+          }
+        }
       },
       "required": ["uid", "email"]
     },
@@ -40,6 +52,26 @@
         "createdAt": { "type": "string", "format": "date-time", "description": "When the alert was created" }
       },
       "required": ["userId", "pair", "condition", "value", "isActive", "isTriggered", "createdAt"]
+    },
+    "SimulatedTrade": {
+      "title": "SimulatedTrade",
+      "description": "A simulated trade placed by a user",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "ID of the user who placed the trade" },
+        "pair": { "type": "string", "description": "Trading pair for the trade" },
+        "type": { "type": "string", "enum": ["LONG", "SHORT"], "description": "Trade direction" },
+        "entryPrice": { "type": "number", "description": "Price at which the trade was entered" },
+        "stopLoss": { "type": "number", "description": "Stop loss price level" },
+        "takeProfit": { "type": "number", "description": "Take profit price level" },
+        "status": { "type": "string", "enum": ["OPEN", "CLOSED"], "description": "Current status of the trade" },
+        "outcome": { "type": "string", "enum": ["WIN", "LOSS"], "description": "Final outcome of the trade" },
+        "pnl": { "type": "number", "description": "Profit or loss amount" },
+        "pnlPercentage": { "type": "number", "description": "Profit or loss percentage" },
+        "timestamp": { "type": "string", "format": "date-time", "description": "When the trade was placed" },
+        "closedAt": { "type": "string", "format": "date-time", "description": "When the trade was closed" }
+      },
+      "required": ["userId", "pair", "type", "entryPrice", "stopLoss", "takeProfit", "status", "timestamp"]
     }
   },
   "firestore": {
@@ -54,6 +86,10 @@
     "/alerts/{alertId}": {
       "schema": "PriceAlert",
       "description": "User price alerts"
+    },
+    "/simulated_trades/{tradeId}": {
+      "schema": "SimulatedTrade",
+      "description": "User simulated trades history"
     }
   }
 }

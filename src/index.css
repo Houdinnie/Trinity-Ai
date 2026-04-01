@@ -2,6 +2,7 @@
 
 @theme {
   --animate-marquee: marquee 30s linear infinite;
+  --animate-spin-slow: spin 3s linear infinite;
 
   @keyframes marquee {
     0% { transform: translateX(0); }

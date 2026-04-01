@@ -1,6 +1,7 @@
 import { GoogleGenAI, Type } from "@google/genai";
+import { UserProfile, AnalysisRecord } from "../types";
 
-export const analyzeChart = async (imageBase64: string, pair: string, timeframe: string = "1h") => {
+export const analyzeChart = async (imageBase64: string, pair: string, timeframe: string = "1h", userProfile?: UserProfile, recentHistory?: AnalysisRecord[]) => {
   const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY;
   
   if (!apiKey) {
@@ -17,61 +18,76 @@ export const analyzeChart = async (imageBase64: string, pair: string, timeframe:
     throw new Error("AI service is not initialized correctly. Please check your configuration.");
   }
 
-  const model = "gemini-3.1-pro-preview"; // Using Pro for complex trading analysis
+  const model = "gemini-3-flash-preview"; 
   const currentUtcTime = new Date().toUTCString();
+  const aiSettings = userProfile?.aiSettings || { breakoutSensitivity: 50, reversalSensitivity: 50, anomalySensitivity: 50 };
   
-  const systemInstruction = `You are Trinity, an ultimate AI chart analyzer specialized in "sniper entries" for trading. 
-Your analysis is based on Liquidity Engineering, Market Structure Shifts, and Multi-Timeframe Coordination.
+  // Format recent history for AI learning
+  let historyContext = "";
+  if (recentHistory && recentHistory.length > 0) {
+    const feedbackSummary = recentHistory
+      .filter(h => h.outcome || h.aiFeedback)
+      .slice(0, 5) // Last 5 relevant records
+      .map(h => {
+        let result;
+        try {
+          result = JSON.parse(h.result);
+        } catch (e) {
+          result = { trend: 'N/A', sniperEntry: { reasoning: 'N/A' } };
+        }
+        return `- Pair: ${h.pair}, Outcome: ${h.outcome || 'N/A'}, User Feedback: ${h.aiFeedback || 'None'}, Previous Analysis: ${result.trend} ${result.sniperEntry?.reasoning?.substring(0, 100) || ''}...`;
+      })
+      .join("\n");
+    
+    if (feedbackSummary) {
+      historyContext = `
+**Past Performance & User Feedback (Learning Context)**:
+The following is a summary of your recent analyses and their outcomes/user feedback. 
+Use this to refine your current predictions, avoid past mistakes, and double-down on successful patterns:
+${feedbackSummary}
+`;
+    }
+  }
+
+  const systemInstruction = `You are Trinity, an elite AI chart analyzer specialized in "Zero-Drawdown Smart Money Sniper Entries."
+Your analysis integrates advanced Smart Money Concepts (SMC), Liquidity Engineering, and Market Structure Shifts (MSS/CHoCH) to protect small accounts.
 
 Current UTC Time: ${currentUtcTime}.
 Selected Timeframe: ${timeframe}.
 
-First, identify the trading pair from the provided candlestick chart image (look for text, symbols, or watermarks like XAUUSD, GBPJPY, etc.). 
-If the user provided a pair (${pair}), verify if it matches the image. If not, use the pair identified in the image.
-Assume the chart is in the ${timeframe} timeframe unless clearly stated otherwise in the image.
+Identify the pair and timeframe from the image. If provided (${pair}), verify it.
+${historyContext}
 
-Follow these specific modules for your analysis:
+Core Analysis Modules:
 
-1. **Market Session & Condition**:
-   - Determine which market session is currently active (Asian, London, New York) based on the identified pair and the provided UTC time.
-   - Analyze if the current market is volatile or consolidating.
-   - Provide a brief performance summary for the active session.
+1. **SMC Market Structure**:
+   - Identify Trend (Bullish/Bearish/Range).
+   - Locate Break of Structure (BOS) and Change of Character (CHoCH).
+   - Identify Inducement (IDM) levels where retail is trapped.
 
-2. **Candlestick Pattern Recognition**:
-   - Identify 2-3 prominent candlestick patterns (e.g., Doji, Hammer, Shooting Star, Bullish/Bearish Engulfing, Morning/Evening Star).
-   - For each pattern, provide its name, its significance in the current context, and its estimated visual coordinates (X and Y, from 0 to 1).
+2. **Liquidity & POIs**:
+   - Locate High-Probability Points of Interest (POI): Order Blocks (OB), Breaker Blocks (BB), or Mitigation Blocks (MB).
+   - Identify Liquidity Voids / Fair Value Gaps (FVG) that need filling.
+   - Detect Liquidity Sweeps (Equal Highs/Lows, Trendline Liquidity).
 
-3. **Liquidity Engineering (The "Trap" Detection)**:
-   - Look for institutional manipulation at key Support/Resistance levels.
-   - Identify 'false signals' (Level Overthrow, Thrust Candlestick).
-   - Check for CHoCH (Change of Character) following a sweep.
-   - Only validate a signal after engineering has occurred.
+3. **Zero-Drawdown Entry Logic**:
+   - **Trigger**: Price must sweep liquidity, create a CHoCH on lower timeframes, and tap a refined POI (OB/BB).
+   - **Precision**: Entry must be at the "Extreme" of the POI to ensure minimal drawdown.
 
-4. **Market Shift & Reclaim Module (Trend Reversal)**:
-   - Identify the Shift Point (previous trend's invalidation point).
-   - Check the Reclaim Point (dominance reassertion).
-   - Entry Trigger: Only when the Reclaim Point is secured.
+4. **Predictive Indicators**:
+   - Breakout/Reversal probabilities.
+   - Institutional Flow (Accumulation/Distribution).
+   - Anomaly Score for manipulation detection.
+   - **AI Confirmation Score**: A value from 0-100 representing the total confluence of signals (SMC, Liquidity, Sentiment, Probability).
 
-5. **Multi-Timeframe "Cycle" Coordination**:
-   - Establish directional bias (Weekly/Monthly).
-   - Refine on Daily/H4 (Area of Liquidity - AOL).
-   - Sniper Entry on H1/M15 (Market Shift within higher timeframe AOL).
+   **User Sensitivity Preferences**:
+   - Breakout Detection Sensitivity: ${aiSettings.breakoutSensitivity}% (Higher means more aggressive breakout identification).
+   - Reversal Detection Sensitivity: ${aiSettings.reversalSensitivity}% (Higher means more aggressive reversal identification).
+   - Anomaly Detection Sensitivity: ${aiSettings.anomalySensitivity}% (Higher means more sensitive to market manipulation/anomalies).
+   
+   Adjust your internal thresholds for these indicators based on these percentages.
 
-6. **Type 1 Engulfing Entry**:
-   - Scan for Type 1 Engulfing AOL.
-   - For Bearish: Two bearish candles, second has a Large Wick sweeping first, second closes below first's range.
-
-7. **Managing "Trouble Areas" (FTAs)**:
-   - Identify First Trouble Areas (FTAs) that could oppose the trade.
-   - Suggest partial profits or stop-loss adjustments.
-
-8. **AI Predictive Indicators**:
-   - Calculate the Probability of a Breakout (0-100%) based on consolidation patterns and volume.
-   - Calculate the Probability of a Trend Reversal (0-100%) based on exhaustion signals and divergence.
-   - Determine an Anomaly Score (0-100) for unusual price action or volume spikes.
-   - Identify the current Institutional Flow phase (ACCUMULATION, DISTRIBUTION, or NEUTRAL).
-
-Return your analysis in a structured JSON format.`;
+Return a structured JSON response.`;
 
   // Extract mimeType from data URL
   const mimeTypeMatch = imageBase64.match(/data:([^;]+);base64,/);
@@ -84,147 +100,179 @@ Return your analysis in a structured JSON format.`;
 
   // Check image size (approximate from base64)
   const sizeInBytes = (base64Data.length * 3) / 4;
-  if (sizeInBytes > 4 * 1024 * 1024) { // 4MB limit for Gemini API
-    throw new Error("The image is too large for the AI to process. Please upload a smaller screenshot (under 4MB).");
+  if (sizeInBytes > 10 * 1024 * 1024) { // 10MB limit for Gemini API
+    throw new Error("The image is too large for the AI to process. Please upload a smaller screenshot (under 10MB).");
   }
 
-  try {
-    const response = await ai.models.generateContent({
-      model,
-      contents: {
-        parts: [
-          {
-            inlineData: {
-              mimeType,
-              data: base64Data,
-            },
-          },
-          {
-            text: `Identify the trading pair in this screenshot and analyze it for a sniper entry. 
-Current UTC Time is ${currentUtcTime}. 
-Provide trend direction, support/resistance levels, market session performance, candlestick patterns, and potential trading opportunities (Entry, SL, multiple TPs).
+  const maxRetries = 2;
+  let retryCount = 0;
 
-IMPORTANT: Identify 2-3 key candlestick patterns and their significance.
-Suggest 2-3 Take Profit (TP) levels with their corresponding Risk-Reward (RR) ratios. 
-Estimate the normalized Y-coordinates (0 to 1, where 0 is the top of the image and 1 is the bottom) for the Entry, Stop Loss, and each Take Profit level based on the price axis visible in the chart.
-For candlestick patterns, estimate both X and Y coordinates (0 to 1).`,
-          },
-        ],
-      },
-      config: {
-        systemInstruction,
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            identifiedPair: { type: Type.STRING, description: "The trading pair identified from the screenshot" },
-            timeframe: { type: Type.STRING, description: "The timeframe of the chart analyzed (e.g., 15m, 1h, 4h, 1d)" },
-            marketSession: { type: Type.STRING, description: "Current active market session and its performance" },
-            marketCondition: { type: Type.STRING, description: "Whether the market is volatile or consolidating" },
-            trend: { type: Type.STRING, description: "Current trend direction and momentum" },
-            momentum: { type: Type.STRING, description: "Analysis of price momentum" },
-            supportResistance: { 
-              type: Type.ARRAY, 
-              items: { type: Type.STRING },
-              description: "Key support and resistance levels identified"
-            },
-            candlestickPatterns: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  name: { type: Type.STRING, description: "Name of the candlestick pattern (e.g., Doji, Hammer)" },
-                  significance: { type: Type.STRING, description: "The significance of this pattern in the current context" },
-                  visualX: { type: Type.NUMBER, description: "Estimated X coordinate (0-1) for the pattern on the image" },
-                  visualY: { type: Type.NUMBER, description: "Estimated Y coordinate (0-1) for the pattern on the image" },
-                  type: { type: Type.STRING, enum: ["BULLISH", "BEARISH", "NEUTRAL"], description: "The sentiment of the pattern" }
-                },
-                required: ["name", "significance", "visualX", "visualY", "type"]
+  const executeAnalysis = async (): Promise<any> => {
+    try {
+      const response = await ai.models.generateContent({
+        model,
+        contents: {
+          parts: [
+            {
+              inlineData: {
+                mimeType,
+                data: base64Data,
               },
-              description: "Identified candlestick patterns on the chart"
             },
-            liquidityEngineering: { type: Type.STRING, description: "Analysis of liquidity traps and sweeps" },
-            marketShift: { type: Type.STRING, description: "Analysis of market structure shifts" },
-            aiIndicators: {
-              type: Type.OBJECT,
-              properties: {
-                breakoutProbability: { type: Type.NUMBER, description: "Probability of a breakout (0-100)" },
-                reversalProbability: { type: Type.NUMBER, description: "Probability of a trend reversal (0-100)" },
-                anomalyScore: { type: Type.NUMBER, description: "Score representing unusual price action (0-100)" },
-                predictiveInsights: { type: Type.STRING, description: "Brief predictive analysis based on current chart state" },
-                institutionalFlow: { type: Type.STRING, enum: ["ACCUMULATION", "DISTRIBUTION", "NEUTRAL"], description: "Current institutional flow phase" }
+            {
+              text: `Analyze this chart for a High-Probability SMC Sniper Entry. 
+Identify Pair, Timeframe, and Market Session.
+Current UTC: ${currentUtcTime}.
+
+Requirements:
+- Focus on ZERO-DRAWDOWN setups for small accounts.
+- Use SMC (Order Blocks, Breaker Blocks, FVGs).
+- Identify CHoCH after a Liquidity Sweep.
+- Provide Entry, SL, and 3 TPs with visual Y-coordinates (0-1).
+- Identify 2-3 Candlestick Patterns with X/Y coordinates (0-1).`,
+            },
+          ],
+        },
+        config: {
+          systemInstruction,
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              identifiedPair: { type: Type.STRING, description: "The trading pair identified" },
+              timeframe: { type: Type.STRING, description: "The chart timeframe" },
+              marketSession: { type: Type.STRING, description: "Active session and performance" },
+              marketCondition: { type: Type.STRING, description: "Volatility/Consolidation state" },
+              trend: { type: Type.STRING, description: "Trend direction" },
+              momentum: { type: Type.STRING, description: "Price momentum analysis" },
+              smcConfirmation: { type: Type.STRING, description: "SMC factors used (OB, BB, FVG, IDM)" },
+              supportResistance: { 
+                type: Type.ARRAY, 
+                items: { type: Type.STRING },
+                description: "Key levels"
               },
-              required: ["breakoutProbability", "reversalProbability", "anomalyScore", "predictiveInsights", "institutionalFlow"]
-            },
-            sniperEntry: {
-              type: Type.OBJECT,
-              properties: {
-                entry: { type: Type.STRING, description: "Potential entry price or zone" },
-                stopLoss: { type: Type.STRING, description: "Suggested stop-loss level" },
-                takeProfits: {
-                  type: Type.ARRAY,
-                  items: {
-                    type: Type.OBJECT,
-                    properties: {
-                      price: { type: Type.STRING, description: "Take profit price target" },
-                      rrRatio: { type: Type.STRING, description: "Risk-reward ratio for this target (e.g., 1:2.5)" },
-                      visualY: { type: Type.NUMBER, description: "Estimated Y coordinate (0-1) for this TP level on the image" }
-                    },
-                    required: ["price", "rrRatio", "visualY"]
-                  },
-                  description: "Suggested 2-3 take-profit targets with RR ratios and visual coordinates"
-                },
-                reasoning: { type: Type.STRING, description: "Detailed reasoning for this entry" },
-                visualCoordinates: {
+              candlestickPatterns: {
+                type: Type.ARRAY,
+                items: {
                   type: Type.OBJECT,
                   properties: {
-                    entryY: { type: Type.NUMBER, description: "Estimated Y coordinate (0-1) for entry level on the image" },
-                    stopLossY: { type: Type.NUMBER, description: "Estimated Y coordinate (0-1) for stop loss level on the image" }
+                    name: { type: Type.STRING },
+                    significance: { type: Type.STRING },
+                    visualX: { type: Type.NUMBER },
+                    visualY: { type: Type.NUMBER },
+                    type: { type: Type.STRING, enum: ["BULLISH", "BEARISH", "NEUTRAL"] }
                   },
-                  required: ["entryY", "stopLossY"]
+                  required: ["name", "significance", "visualX", "visualY", "type"]
                 }
               },
-              required: ["entry", "stopLoss", "takeProfits", "reasoning", "visualCoordinates"]
+              liquidityEngineering: { type: Type.STRING, description: "Liquidity traps/sweeps" },
+              marketShift: { type: Type.STRING, description: "MSS/CHoCH analysis" },
+              aiIndicators: {
+                type: Type.OBJECT,
+                properties: {
+                  breakoutProbability: { type: Type.NUMBER },
+                  reversalProbability: { type: Type.NUMBER },
+                  anomalyScore: { type: Type.NUMBER },
+                  predictiveInsights: { type: Type.STRING },
+                  institutionalFlow: { type: Type.STRING, enum: ["ACCUMULATION", "DISTRIBUTION", "NEUTRAL"] }
+                },
+                required: ["breakoutProbability", "reversalProbability", "anomalyScore", "predictiveInsights", "institutionalFlow"]
+              },
+              sniperEntry: {
+                type: Type.OBJECT,
+                properties: {
+                  entry: { type: Type.STRING },
+                  stopLoss: { type: Type.STRING },
+                  takeProfits: {
+                    type: Type.ARRAY,
+                    items: {
+                      type: Type.OBJECT,
+                      properties: {
+                        price: { type: Type.STRING },
+                        rrRatio: { type: Type.STRING },
+                        visualY: { type: Type.NUMBER }
+                      },
+                      required: ["price", "rrRatio", "visualY"]
+                    }
+                  },
+                  reasoning: { type: Type.STRING },
+                  visualCoordinates: {
+                    type: Type.OBJECT,
+                    properties: {
+                      entryY: { type: Type.NUMBER },
+                      stopLossY: { type: Type.NUMBER }
+                    },
+                    required: ["entryY", "stopLossY"]
+                  }
+                },
+                required: ["entry", "stopLoss", "takeProfits", "reasoning", "visualCoordinates"]
+              },
+              troubleAreas: { type: Type.STRING, description: "FTAs to watch" },
+              aiConfirmationScore: { 
+                type: Type.NUMBER, 
+                description: "Confluence score (0-100) based on SMC, liquidity, sentiment, and breakout probability" 
+              }
             },
-            troubleAreas: { type: Type.STRING, description: "First Trouble Areas (FTAs) to watch" }
-          },
-          required: ["identifiedPair", "marketSession", "marketCondition", "trend", "momentum", "supportResistance", "candlestickPatterns", "liquidityEngineering", "marketShift", "sniperEntry", "troubleAreas"]
-        }
-      },
-    });
+            required: ["identifiedPair", "marketSession", "marketCondition", "trend", "momentum", "smcConfirmation", "supportResistance", "candlestickPatterns", "liquidityEngineering", "marketShift", "sniperEntry", "troubleAreas", "aiConfirmationScore"]
+          }
+        },
+      });
 
-    if (!response.text) {
-      throw new Error("The AI returned an empty response. This usually happens if the image content is unclear or violates safety guidelines.");
-    }
+      if (!response || !response.text) {
+        throw new Error("The AI returned an empty response. This usually happens if the image content is unclear or violates safety guidelines.");
+      }
 
-    try {
       return JSON.parse(response.text);
-    } catch (parseError) {
-      console.error("JSON Parse Error:", response.text);
-      throw new Error("Failed to parse the AI analysis. The model might have returned an invalid data format.");
-    }
-  } catch (error: any) {
-    console.error("Gemini API Error:", error);
-    
-    // Handle specific Gemini error codes/messages
-    const message = error.message || "";
-    
-    if (message.includes("429") || message.toLowerCase().includes("quota")) {
-      throw new Error("API Quota exceeded. Please wait a moment before trying again.");
-    }
-    if (message.includes("403") || message.toLowerCase().includes("permission")) {
-      throw new Error("API Permission denied. Please check your API key configuration.");
-    }
-    if (message.toLowerCase().includes("safety")) {
-      throw new Error("The analysis was blocked by safety filters. Please ensure the image contains only trading charts.");
-    }
-    if (message.toLowerCase().includes("network") || message.toLowerCase().includes("fetch")) {
-      throw new Error("Network error. Please check your internet connection.");
-    }
-    if (message.toLowerCase().includes("overloaded") || message.includes("503")) {
-      throw new Error("The AI model is currently overloaded. Please try again in a few seconds.");
-    }
+    } catch (error: any) {
+      console.error(`Gemini API Error (Attempt ${retryCount + 1}):`, error);
+      
+      let message = error.message || "";
+      try {
+        if (typeof message === 'string' && message.startsWith('{')) {
+          const parsed = JSON.parse(message);
+          const rawMessage = parsed.error?.message || parsed.error || parsed.message || message;
+          message = typeof rawMessage === 'string' ? rawMessage : JSON.stringify(rawMessage);
+        }
+      } catch (e) {}
 
-    throw new Error(message || "An unexpected error occurred during analysis.");
-  }
+      // Ensure message is a string for safe processing
+      const msgStr = String(message);
+
+      // Retry on network/proxy errors or overloaded
+      const isRetryable = 
+        msgStr.toLowerCase().includes("network") || 
+        msgStr.toLowerCase().includes("fetch") || 
+        msgStr.includes("Proxying failed") || 
+        msgStr.includes("Load failed") ||
+        msgStr.toLowerCase().includes("overloaded") || 
+        msgStr.includes("503");
+
+      if (isRetryable && retryCount < maxRetries) {
+        retryCount++;
+        const delay = Math.pow(2, retryCount) * 1000; // Exponential backoff
+        await new Promise(resolve => setTimeout(resolve, delay));
+        return executeAnalysis();
+      }
+
+      if (msgStr.includes("429") || msgStr.toLowerCase().includes("quota")) {
+        throw new Error("API Quota exceeded. Please wait a moment before trying again.");
+      }
+      if (msgStr.includes("403") || msgStr.toLowerCase().includes("permission") || msgStr.includes("API key not valid")) {
+        throw new Error("API key not valid or permission denied. Please check your API key configuration.");
+      }
+      if (msgStr.toLowerCase().includes("safety")) {
+        throw new Error("The analysis was blocked by safety filters. Please ensure the image contains only trading charts.");
+      }
+      if (msgStr.toLowerCase().includes("network") || msgStr.toLowerCase().includes("fetch") || msgStr.includes("Proxying failed") || msgStr.includes("Load failed")) {
+        throw new Error("Network error or AI proxy failure. This might be a temporary issue with the service. Please try again in a moment.");
+      }
+      if (msgStr.toLowerCase().includes("overloaded") || msgStr.includes("503")) {
+        throw new Error("The AI model is currently overloaded. Please try again in a few seconds.");
+      }
+
+      throw new Error(msgStr || "An unexpected error occurred during analysis.");
+    }
+  };
+
+  return executeAnalysis();
 };
