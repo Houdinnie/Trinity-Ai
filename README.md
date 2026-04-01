@@ -1,20 +1,20 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# Trinity-AI
+A sophisticated technical analysis suite designed for high-density market orchestration. Trinity-AI integrates multi-source data streams into a centralized "command-center" interface, focusing on precision pattern recognition and automated trade narrative construction.
 
-# Run and deploy your AI Studio app
+## Overview
+Trinity-AI acts as the analytical brain for modern trading workflows, unifying data from MetaTrader 5 and Binance into a single, high-fidelity dashboard. It is engineered to identify institutional-grade setups using advanced market geometry and custom technical schematics.
 
-This contains everything you need to run your app locally.
+## Key Capabilities
+• Pattern Identification: Real-time detection of high-confluence structures like Dragon Patterns and Quasimodo Levels.
+• The "Trinity" Data Core: Synchronized data pipeline that aggregates Forex, Gold (XAUUSD), and Crypto assets into a structured SQL environment.
+• Command-Center UI: Designed with a focus on data-dense visual layouts and high-end UI/UX aesthetics for maximum situational awareness.
+• Standardized Deployment: Fully containerized architecture using Docker to ensure seamless environment parity across development and production.
 
-View your app in AI Studio: https://ai.studio/apps/e8edaca8-6aab-461f-94c8-208a3bd44f72
+## System Architecture
+• /engine: Core logic for chart analysis and pattern detection algorithms.
+• /bridge: Dedicated modules for interfacing with MetaTrader 5 and external exchanges.
+• /viz: Frontend assets for the parallax-driven, data-dense user interface.
+• /storage: Database schemas for logging trade history and compounding metrics.
 
-## Run Locally
-
-**Prerequisites:**  Node.js
-
-
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+## Disclaimer
+Trinity-AI is a tool designed for advanced market analysis. Users are responsible for their own risk management and execution.
