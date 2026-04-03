@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   Upload, 
   TrendingUp, 
@@ -54,12 +54,26 @@ export function Dashboard({ user, profile, history, currentPrices, onUpdateProfi
   const [hasApiKey, setHasApiKey] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  useEffect(() => {
+    const checkKey = async () => {
+      if (typeof window !== 'undefined' && window.aistudio?.hasSelectedApiKey) {
+        const hasKey = await window.aistudio.hasSelectedApiKey();
+        setHasApiKey(hasKey);
+      }
+    };
+    checkKey();
+  }, []);
+
   const pairs = ['AUTO', 'XAUUSD', 'GBPJPY', 'GBPUSD', 'EURUSD', 'BTCUSD', 'ETHUSD', 'V75', 'BOOM1000', 'CRASH500'];
 
   const handleSelectKey = async () => {
-    if (window.aistudio?.openSelectKey) {
-      await window.aistudio.openSelectKey();
-      setHasApiKey(true);
+    if (typeof window !== 'undefined' && window.aistudio?.openSelectKey) {
+      try {
+        await window.aistudio.openSelectKey();
+        setHasApiKey(true);
+      } catch (err) {
+        console.error("Failed to open key selection:", err);
+      }
     }
   };
 
@@ -100,7 +114,7 @@ export function Dashboard({ user, profile, history, currentPrices, onUpdateProfi
     } catch (err: any) {
       console.error("Analysis failed:", err);
       const errorMessage = err.message || "Analysis failed. Please try again.";
-      if (errorMessage.includes("API key not valid") || errorMessage.includes("Requested entity was not found")) {
+      if (errorMessage.includes("API key not valid") || errorMessage.includes("Requested entity was not found") || errorMessage.includes("Gemini API key is missing")) {
         setHasApiKey(false);
         setUploadError("API Key is invalid or not selected. Please select a valid API key.");
       } else {
@@ -275,7 +289,7 @@ export function Dashboard({ user, profile, history, currentPrices, onUpdateProfi
                   <p className="text-sm font-bold">API Key Required</p>
                 </div>
                 <p className="text-xs text-gray-400 leading-relaxed">
-                  This analysis uses Gemini AI models which require a valid API key from a paid Google Cloud project for the best results.
+                  Trinity AI requires a valid Gemini API key to perform advanced chart analysis. Please select a key from a paid Google Cloud project.
                 </p>
                 <button
                   onClick={handleSelectKey}

@@ -14,7 +14,7 @@ Trinity is an elite AI chart analyzer specialized in "Zero-Drawdown Smart Money 
 
 ## Features
 
-- **AI Chart Analysis**: Powered by Groq's Llama 3.2 Vision API for ultra-fast and precise market insights.
+- **AI Chart Analysis**: Powered by Gemini 3.1 Flash for ultra-fast and precise market insights.
 - **SMC Sniper Entries**: Identifies high-probability entry zones, stop losses, and take profit levels.
 - **Trading Journal**: A rich text journal with code block support to document your trading journey and emotions.
 - **Real-time Data**: Integrated with Firebase for secure data storage and real-time updates.
@@ -27,7 +27,7 @@ Trinity is an elite AI chart analyzer specialized in "Zero-Drawdown Smart Money 
 Create a `.env` file based on `.env.example` and add your API keys:
 
 ```env
-GROQ_API_KEY="your_groq_api_key"
+GEMINI_API_KEY="your_gemini_api_key"
 ```
 
 ### Local Development
@@ -69,7 +69,7 @@ This repository is set up for deployment on Hugging Face Spaces using Docker.
 1. Create a new Space on Hugging Face.
 2. Select **Docker** as the SDK.
 3. Push your code to the Space's repository.
-4. Add your `GROQ_API_KEY` to the Space's **Secrets** in the settings.
+4. Add your `GEMINI_API_KEY` to the Space's **Secrets** in the settings.
 
 ## License
 

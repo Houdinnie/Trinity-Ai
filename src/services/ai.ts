@@ -1,14 +1,14 @@
-import Groq from "groq-sdk";
+import { GoogleGenAI } from "@google/genai";
 import { UserProfile, AnalysisRecord } from "../types";
 
 export const analyzeChart = async (imageBase64: string, pair: string, timeframe: string = "1h", userProfile?: UserProfile, recentHistory?: AnalysisRecord[]) => {
-  const apiKey = process.env.GROQ_API_KEY;
+  const apiKey = process.env.GEMINI_API_KEY;
   
   if (!apiKey) {
-    throw new Error("Groq API key is missing. Please configure it in the application settings.");
+    throw new Error("Gemini API key is missing. Please select an API key in the application settings.");
   }
 
-  const groq = new Groq({ apiKey, dangerouslyAllowBrowser: true });
+  const ai = new GoogleGenAI({ apiKey });
 
   if (!imageBase64) {
     throw new Error("No image data provided. Please upload a chart screenshot.");
@@ -96,38 +96,43 @@ Return a structured JSON response exactly matching this schema:
 }`;
 
   try {
-    const completion = await groq.chat.completions.create({
-      messages: [
+    // Extract base64 data and mime type
+    const match = imageBase64.match(/^data:(image\/\w+);base64,(.+)$/);
+    if (!match) {
+      throw new Error("Invalid image format. Please upload a valid image file.");
+    }
+    const mimeType = match[1];
+    const data = match[2];
+
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: [
         {
-          role: "user",
-          content: [
-            { type: "text", text: `Analyze this chart for a High-Probability SMC Sniper Entry. Identify Pair, Timeframe, and Market Session. Current UTC: ${currentUtcTime}. Requirements: Focus on ZERO-DRAWDOWN setups, use SMC, identify CHoCH after Liquidity Sweep. Provide Entry, SL, and 3 TPs with visual Y-coordinates (0-1). Identify 2-3 Candlestick Patterns with X/Y coordinates (0-1). System Instructions: ${systemPrompt}` },
+          parts: [
+            { text: `Analyze this chart for a High-Probability SMC Sniper Entry. Identify Pair, Timeframe, and Market Session. Current UTC: ${currentUtcTime}. Requirements: Focus on ZERO-DRAWDOWN setups, use SMC, identify CHoCH after Liquidity Sweep. Provide Entry, SL, and 3 TPs with visual Y-coordinates (0-1). Identify 2-3 Candlestick Patterns with X/Y coordinates (0-1). System Instructions: ${systemPrompt}` },
             {
-              type: "image_url",
-              image_url: {
-                url: imageBase64,
-              },
-            },
-          ],
-        },
+              inlineData: {
+                mimeType,
+                data
+              }
+            }
+          ]
+        }
       ],
-      model: "llama-3.2-11b-vision-preview",
-      temperature: 0.2,
-      max_tokens: 2048,
-      top_p: 1,
-      stream: false,
-      response_format: { type: "json_object" },
-      stop: null,
+      config: {
+        responseMimeType: "application/json",
+        temperature: 0.2,
+      },
     });
 
-    const content = completion.choices[0]?.message?.content;
-    if (!content) {
+    const text = response.text;
+    if (!text) {
       throw new Error("The AI returned an empty response.");
     }
 
-    return JSON.parse(content);
+    return JSON.parse(text);
   } catch (error: any) {
-    console.error("Groq API Error:", error);
+    console.error("Gemini API Error:", error);
     throw new Error(error.message || "An unexpected error occurred during analysis.");
   }
 };
