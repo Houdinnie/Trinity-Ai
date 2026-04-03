@@ -26,3 +26,56 @@
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.2);
 }
+
+/* Quill Dark Mode */
+.ql-toolbar.ql-snow {
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+  border-top-left-radius: 1rem;
+  border-top-right-radius: 1rem;
+}
+
+.ql-container.ql-snow {
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-bottom-left-radius: 1rem;
+  border-bottom-right-radius: 1rem;
+  background: rgba(0, 0, 0, 0.4) !important;
+  font-family: inherit !important;
+}
+
+.ql-editor {
+  min-height: 200px;
+  font-size: 0.875rem !important;
+  color: #d1d5db !important;
+}
+
+.ql-editor.ql-blank::before {
+  color: #6b7280 !important;
+  font-style: normal !important;
+}
+
+.ql-snow .ql-stroke {
+  stroke: #9ca3af !important;
+}
+
+.ql-snow .ql-fill {
+  fill: #9ca3af !important;
+}
+
+.ql-snow .ql-picker {
+  color: #9ca3af !important;
+}
+
+.ql-snow .ql-picker-options {
+  background-color: #1f2937 !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+.journal-content pre {
+  background: rgba(0, 0, 0, 0.5) !important;
+  padding: 1rem !important;
+  border-radius: 0.5rem !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  margin: 1rem 0 !important;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important;
+}

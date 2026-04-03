@@ -26,7 +26,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
 import { collection, addDoc, serverTimestamp, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '../firebase';
-import { analyzeChart } from '../services/gemini';
+import { analyzeChart } from '../services/ai';
 import { cn } from '../lib/utils';
 import { ChartOverlay } from '../components/ChartOverlay';
 import { RiskCalculator } from '../components/RiskCalculator';
@@ -583,24 +583,31 @@ export function Dashboard({ user, profile, history, currentPrices, onUpdateProfi
                       <div className="text-center">
                         <p className="text-[10px] text-gray-500 uppercase font-bold mb-3">Overall AI Confirmation</p>
                         <div className="relative inline-flex items-center justify-center">
-                          <svg className="w-20 h-20 sm:w-24 sm:h-24 transform -rotate-90">
-                            <circle cx="40" cy="40" r="36" stroke="currentColor" strokeWidth="5" fill="transparent" className="text-white/5" sm:cx="48" sm:cy="48" sm:r="42" sm:stroke-width="6" />
+                          <svg className="w-20 h-20 sm:w-24 sm:h-24 transform -rotate-90" viewBox="0 0 100 100">
                             <circle 
-                              cx="40" 
-                              cy="40" 
-                              r="36" 
+                              cx="50" 
+                              cy="50" 
+                              r="45" 
                               stroke="currentColor" 
-                              strokeWidth="5" 
+                              strokeWidth="8" 
                               fill="transparent" 
-                              strokeDasharray={226.2} 
-                              strokeDashoffset={226.2 * (1 - analysisResult.aiConfirmationScore / 100)} 
+                              className="text-white/5" 
+                            />
+                            <circle 
+                              cx="50" 
+                              cy="50" 
+                              r="45" 
+                              stroke="currentColor" 
+                              strokeWidth="8" 
+                              fill="transparent" 
+                              strokeDasharray={282.7} 
+                              strokeDashoffset={282.7 * (1 - analysisResult.aiConfirmationScore / 100)} 
                               className={cn(
                                 "transition-all duration-1000",
                                 analysisResult.aiConfirmationScore >= 80 ? "text-green-500" :
                                 analysisResult.aiConfirmationScore >= 60 ? "text-yellow-500" :
                                 "text-red-500"
                               )} 
-                              sm:cx="48" sm:cy="48" sm:r="42" sm:stroke-width="6" sm:stroke-dasharray={263.9} sm:stroke-dashoffset={263.9 * (1 - analysisResult.aiConfirmationScore / 100)}
                             />
                           </svg>
                           <div className="absolute flex flex-col items-center">

@@ -334,7 +334,7 @@ export function LiveChart({ result, pair, analysisId, userProfile, onUpdateProfi
 
   const calculateMSS = (data: CandlestickData[]) => {
     const shifts: SMCIndicator[] = [];
-    const lookback = tradeType === 'scalp' ? 5 : tradeType === 'day' ? 10 : 20;
+    const lookback = strategyType === 'scalp' ? 5 : strategyType === 'day' ? 10 : 20;
 
     for (let i = lookback; i < data.length - 1; i++) {
       const prevHigh = Math.max(...data.slice(i - lookback, i).map(d => d.high));
@@ -532,11 +532,11 @@ export function LiveChart({ result, pair, analysisId, userProfile, onUpdateProfi
   ];
 
   useEffect(() => {
-    if (tradeType === 'scalp') setTimeframe('5m');
-    else if (tradeType === 'day') setTimeframe('1h');
-    else if (tradeType === 'swing') setTimeframe('4h');
-    else if (tradeType === 'position') setTimeframe('1d');
-  }, [tradeType]);
+    if (strategyType === 'scalp') setTimeframe('5m');
+    else if (strategyType === 'day') setTimeframe('1h');
+    else if (strategyType === 'swing') setTimeframe('4h');
+    else if (strategyType === 'position') setTimeframe('1d');
+  }, [strategyType]);
 
   useEffect(() => {
     if (!chartContainerRef.current) return;
@@ -1016,9 +1016,9 @@ export function LiveChart({ result, pair, analysisId, userProfile, onUpdateProfi
           // Strategy-based lookback and sensitivity
           const smcData = performanceMode ? data.slice(-150) : data;
           const strategyMultiplier = 
-            tradeType === 'scalp' ? 0.5 : 
-            tradeType === 'day' ? 1.0 : 
-            tradeType === 'swing' ? 2.0 : 3.0;
+            strategyType === 'scalp' ? 0.5 : 
+            strategyType === 'day' ? 1.0 : 
+            strategyType === 'swing' ? 2.0 : 3.0;
 
           const fvgs = calculateFVG(smcData);
           const mss = calculateMSS(smcData);
@@ -1028,7 +1028,7 @@ export function LiveChart({ result, pair, analysisId, userProfile, onUpdateProfi
 
           if (indicators.fvg) {
             currentIndicators.push(...fvgs);
-            const displayCount = tradeType === 'scalp' ? 2 : tradeType === 'position' ? 10 : 5;
+            const displayCount = strategyType === 'scalp' ? 2 : strategyType === 'position' ? 10 : 5;
             fvgs.slice(-displayCount).forEach(fvg => {
               candlestickSeries.createPriceLine({
                 price: fvg.top,
@@ -1066,7 +1066,7 @@ export function LiveChart({ result, pair, analysisId, userProfile, onUpdateProfi
 
           if (indicators.ob) {
             currentIndicators.push(...obs);
-            const displayCount = tradeType === 'scalp' ? 1 : tradeType === 'position' ? 5 : 2;
+            const displayCount = strategyType === 'scalp' ? 1 : strategyType === 'position' ? 5 : 2;
             obs.slice(-displayCount).forEach(ob => {
               candlestickSeries.createPriceLine({
                 price: ob.top,

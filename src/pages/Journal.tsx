@@ -1,17 +1,39 @@
 import React, { useState, useEffect } from 'react';
-import { BookMarked, Plus, Trash2, Calendar, Tag, Search, X } from 'lucide-react';
+import { BookMarked, Plus, Trash2, Calendar, Tag, Search, X, Code } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { collection, query, where, orderBy, onSnapshot, addDoc, serverTimestamp, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { toast } from 'sonner';
 import { cn } from '../lib/utils';
 import type { JournalEntry } from '../types';
+import ReactQuill from 'react-quill';
+import 'react-quill/dist/quill.snow.css';
+import ReactMarkdown from 'react-markdown';
+import rehypeHighlight from 'rehype-highlight';
+import 'highlight.js/styles/github-dark.css';
 
 export function Journal({ user }: { user: any }) {
   const [entries, setEntries] = useState<JournalEntry[]>([]);
   const [isAdding, setIsAdding] = useState(false);
   const [newEntry, setNewEntry] = useState({ title: '', content: '', tags: '' });
   const [searchTerm, setSearchTerm] = useState('');
+
+  const quillModules = {
+    toolbar: [
+      [{ 'header': [1, 2, false] }],
+      ['bold', 'italic', 'underline', 'strike', 'blockquote'],
+      [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+      ['code-block'],
+      ['clean']
+    ],
+  };
+
+  const quillFormats = [
+    'header',
+    'bold', 'italic', 'underline', 'strike', 'blockquote',
+    'list', 'bullet',
+    'code-block'
+  ];
 
   useEffect(() => {
     if (!user) return;
@@ -95,13 +117,17 @@ export function Journal({ user }: { user: any }) {
               onChange={(e) => setNewEntry({ ...newEntry, title: e.target.value })}
               className="w-full bg-black/40 border border-white/10 rounded-2xl px-6 py-4 text-lg font-bold outline-none focus:border-orange-500 transition-all"
             />
-            <textarea 
-              placeholder="What's on your mind today? Market conditions, emotions, lessons learned..."
-              value={newEntry.content}
-              onChange={(e) => setNewEntry({ ...newEntry, content: e.target.value })}
-              rows={6}
-              className="w-full bg-black/40 border border-white/10 rounded-2xl px-6 py-4 text-sm outline-none focus:border-orange-500 transition-all resize-none"
-            />
+            <div className="quill-container">
+              <ReactQuill 
+                theme="snow"
+                value={newEntry.content}
+                onChange={(content) => setNewEntry({ ...newEntry, content })}
+                modules={quillModules}
+                formats={quillFormats}
+                placeholder="What's on your mind today? Market conditions, emotions, lessons learned..."
+                className="bg-black/40 border border-white/10 rounded-2xl overflow-hidden text-white"
+              />
+            </div>
             <div className="flex items-center gap-3 bg-black/40 border border-white/10 rounded-2xl px-6 py-4">
               <Tag className="w-5 h-5 text-gray-500" />
               <input 
@@ -170,7 +196,10 @@ export function Journal({ user }: { user: any }) {
                   <Trash2 className="w-5 h-5" />
                 </button>
               </div>
-              <p className="text-gray-300 leading-relaxed whitespace-pre-wrap">{entry.content}</p>
+              <div 
+                className="text-gray-300 leading-relaxed prose prose-invert max-w-none journal-content"
+                dangerouslySetInnerHTML={{ __html: entry.content }}
+              />
             </motion.div>
           ))
         )}
