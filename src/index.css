@@ -79,3 +79,12 @@
   margin: 1rem 0 !important;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important;
 }
+
+.quill-container-mini .ql-editor {
+  min-height: 100px !important;
+  padding: 0.5rem !important;
+}
+
+.quill-container-mini .ql-toolbar.ql-snow {
+  padding: 2px !important;
+}

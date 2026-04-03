@@ -22,6 +22,8 @@ import {
 } from 'lucide-react';
 import { collection, addDoc, query, where, onSnapshot, updateDoc, doc, serverTimestamp, deleteDoc, orderBy } from 'firebase/firestore';
 import { db, auth } from '../firebase';
+import ReactQuill from 'react-quill';
+import 'react-quill/dist/quill.snow.css';
 
 const cn = (...classes: (string | boolean | undefined)[]) => classes.filter(Boolean).join(' ');
 
@@ -64,6 +66,21 @@ export function LiveChart({ result, pair, analysisId, userProfile, onUpdateProfi
   const [tradeNotes, setTradeNotes] = useState('');
   const [editingTradeId, setEditingTradeId] = useState<string | null>(null);
   const [editingNotes, setEditingNotes] = useState('');
+
+  const quillModules = {
+    toolbar: [
+      ['bold', 'italic', 'underline', 'strike'],
+      [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+      ['code-block'],
+      ['clean']
+    ],
+  };
+
+  const quillFormats = [
+    'bold', 'italic', 'underline', 'strike',
+    'list', 'bullet',
+    'code-block'
+  ];
 
   useEffect(() => {
     if (currentPrice && entryPrice === 0) {
@@ -1718,16 +1735,21 @@ export function LiveChart({ result, pair, analysisId, userProfile, onUpdateProfi
                         )}
                       </div>
                       {editingTradeId === trade.id ? (
-                        <textarea
-                          value={editingNotes}
-                          onChange={(e) => setEditingNotes(e.target.value)}
-                          className="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-[10px] text-white focus:outline-none focus:border-blue-500/50 resize-none min-h-[60px]"
-                          autoFocus
-                        />
+                        <div className="quill-container-mini">
+                          <ReactQuill 
+                            theme="snow"
+                            value={editingNotes}
+                            onChange={setEditingNotes}
+                            modules={quillModules}
+                            formats={quillFormats}
+                            className="bg-white/5 border border-white/10 rounded-lg text-[10px] text-white"
+                          />
+                        </div>
                       ) : (
-                        <p className="text-[10px] text-white/60 leading-relaxed italic">
-                          {trade.notes || "No notes added for this trade."}
-                        </p>
+                        <div 
+                          className="text-[10px] text-white/60 leading-relaxed italic journal-content prose prose-invert max-w-none"
+                          dangerouslySetInnerHTML={{ __html: trade.notes || "No notes added for this trade." }}
+                        />
                       )}
                     </div>
 
