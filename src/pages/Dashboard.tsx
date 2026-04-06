@@ -55,26 +55,17 @@ export function Dashboard({ user, profile, history, currentPrices, onUpdateProfi
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const checkKey = async () => {
-      if (typeof window !== 'undefined' && window.aistudio?.hasSelectedApiKey) {
-        const hasKey = await window.aistudio.hasSelectedApiKey();
-        setHasApiKey(hasKey);
-      }
+    const checkKey = () => {
+      const hasKey = !!process.env.GROQ_API_KEY;
+      setHasApiKey(hasKey);
     };
     checkKey();
   }, []);
 
   const pairs = ['AUTO', 'XAUUSD', 'GBPJPY', 'GBPUSD', 'EURUSD', 'BTCUSD', 'ETHUSD', 'V75', 'BOOM1000', 'CRASH500'];
 
-  const handleSelectKey = async () => {
-    if (typeof window !== 'undefined' && window.aistudio?.openSelectKey) {
-      try {
-        await window.aistudio.openSelectKey();
-        setHasApiKey(true);
-      } catch (err) {
-        console.error("Failed to open key selection:", err);
-      }
-    }
+  const handleSelectKey = () => {
+    toast.info("To add your Groq API key, go to the 'Secrets' panel in AI Studio and add a secret named 'GROQ_API_KEY'.");
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -114,9 +105,9 @@ export function Dashboard({ user, profile, history, currentPrices, onUpdateProfi
     } catch (err: any) {
       console.error("Analysis failed:", err);
       const errorMessage = err.message || "Analysis failed. Please try again.";
-      if (errorMessage.includes("API key not valid") || errorMessage.includes("Requested entity was not found") || errorMessage.includes("Gemini API key is missing")) {
+      if (errorMessage.includes("API key not valid") || errorMessage.includes("Requested entity was not found") || errorMessage.includes("Groq API key is missing")) {
         setHasApiKey(false);
-        setUploadError("API Key is invalid or not selected. Please select a valid API key.");
+        setUploadError("Groq API Key is missing or invalid. Please add GROQ_API_KEY to your secrets.");
       } else {
         setUploadError(`Analysis Error: ${errorMessage}`);
       }
@@ -286,16 +277,16 @@ export function Dashboard({ user, profile, history, currentPrices, onUpdateProfi
               <div className="p-4 bg-orange-500/10 border border-orange-500/20 rounded-2xl space-y-3">
                 <div className="flex items-center gap-2 text-orange-500">
                   <AlertCircle className="w-5 h-5" />
-                  <p className="text-sm font-bold">API Key Required</p>
+                  <p className="text-sm font-bold">Groq API Key Required</p>
                 </div>
                 <p className="text-xs text-gray-400 leading-relaxed">
-                  Trinity AI requires a valid Gemini API key to perform advanced chart analysis. Please select a key from a paid Google Cloud project.
+                  Trinity AI requires a valid Groq API key to perform Llama-powered chart analysis. Please add your key to the Secrets panel.
                 </p>
                 <button
                   onClick={handleSelectKey}
                   className="w-full py-2 bg-orange-500 text-white rounded-xl text-xs font-bold hover:bg-orange-600 transition-all"
                 >
-                  Select API Key
+                  How to add Key
                 </button>
               </div>
             )}

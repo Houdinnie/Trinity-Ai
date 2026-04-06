@@ -1,14 +1,14 @@
-import { GoogleGenAI } from "@google/genai";
+import Groq from "groq-sdk";
 import { UserProfile, AnalysisRecord } from "../types";
 
 export const analyzeChart = async (imageBase64: string, pair: string, timeframe: string = "1h", userProfile?: UserProfile, recentHistory?: AnalysisRecord[]) => {
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = process.env.GROQ_API_KEY;
   
   if (!apiKey) {
-    throw new Error("Gemini API key is missing. Please select an API key in the application settings.");
+    throw new Error("Groq API key is missing. Please add GROQ_API_KEY to your secrets.");
   }
 
-  const ai = new GoogleGenAI({ apiKey });
+  const groq = new Groq({ apiKey, dangerouslyAllowBrowser: true });
 
   if (!imageBase64) {
     throw new Error("No image data provided. Please upload a chart screenshot.");
@@ -42,23 +42,42 @@ ${feedbackSummary}
     }
   }
 
-  const systemPrompt = `You are Trinity, an elite AI chart analyzer specialized in "Zero-Drawdown Smart Money Sniper Entries."
-Your analysis integrates advanced Smart Money Concepts (SMC), Liquidity Engineering, and Market Structure Shifts (MSS/CHoCH) to protect small accounts.
+  const systemPrompt = `You are Trinity, an elite AI chart analyzer specialized in the "Liquidity-Zone Shift (LZS)" strategy.
+Your mission is to identify high-probability institutional setups based on the following rules-based framework:
 
-Current UTC Time: ${currentUtcTime}.
-Selected Timeframe: ${timeframe}.
-${historyContext}
+**Strategy Name**: Liquidity-Zone Shift (LZS)
+**Core Philosophy**: Identify higher-timeframe liquidity zones, confirm institutional intent via liquidity engineering and EMA/impulse violation, then execute on lower-timeframe structure shifts.
 
-Core Analysis Modules:
-1. SMC Market Structure (Trend, BOS, CHoCH, IDM)
-2. Liquidity & POIs (OB, BB, MB, FVG, Sweeps)
-3. Zero-Drawdown Entry Logic (Trigger, Precision)
-4. Predictive Indicators (Breakout/Reversal probabilities, Institutional Flow, Anomaly Score)
+### 1. Timeframe Coordination
+- **Constant Timeframe (CT)**: Weekly or Daily. Used to mark major Areas of Liquidity (AOL) - Supply/Demand zones.
+- **Situational Timeframe (ST1)**: H4 or Daily. Watch for shift, liquidity engineering (sweeps, FMD, reclaim).
+- **Entry Timeframe (ET)**: H1 or lower. Look for impulse, BOS/CHoCH, and retest for entry.
 
-User Sensitivity Preferences:
-- Breakout Detection: ${aiSettings.breakoutSensitivity}%
-- Reversal Detection: ${aiSettings.reversalSensitivity}%
-- Anomaly Detection: ${aiSettings.anomalySensitivity}%
+### 2. Indicators & Signals
+- **EMAs**: 9, 21, 50. Use EMA violation/cross (especially the 50 EMA) to confirm impulse.
+- **Liquidity Signals**: Thrust candles, FMD (Further Most Deviation), Wick Sweeps, Engulfing types (Type 1/2/3).
+- **Pattern**: White Collar impulse -> retest pattern on ET inside a CT zone, validated by APA liquidity engineering on ST1.
+
+### 3. Entry Prerequisites (All must align)
+1. **CT AOL**: Identified and fresh/unconsumed.
+2. **ST1 Confirmation**: Shows liquidity engineering (sweep, FMD, or shift) or transition toward CT AOL.
+3. **ET Impulse**: Clear impulse breaking structure (BOS/CHoCH), piercing the 50 EMA.
+4. **ET Retest**: Price retests the small ET zone (base) left by the impulse with a micro-rejection (pin, engulf, or clean retest).
+5. **Confluence**: EMA violation, trendline break, or wick overlap on higher timeframe.
+
+### 4. Workflow & Execution
+1. Mark CT AOL (Weekly/Daily).
+2. Wait for price to return to CT AOL.
+3. Drop to ST1 to confirm liquidity engineering (thrust, sweep, reclaim).
+4. Drop to ET: Wait for impulse clearing 1-2 structures and crossing 50 EMA. Mark the ET base zone.
+5. Entry: On retest of the ET zone with confirmation.
+6. Stop Loss: Just beyond ET zone invalidation.
+7. Take Profit: TP1 at next HTF structure (H4/Daily). Use FTAs (First Trouble Areas) for partials.
+
+### 5. Risk & Trade Management
+- Risk per trade: 1% or less.
+- Trailing: Move SL to last LTF structure (e.g., last H1 lower high for sells).
+- "Never close a trade unless SL is hit" (unless at pre-defined FTA).
 
 Return a structured JSON response exactly matching this schema:
 {
@@ -96,43 +115,41 @@ Return a structured JSON response exactly matching this schema:
 }`;
 
   try {
-    // Extract base64 data and mime type
-    const match = imageBase64.match(/^data:(image\/\w+);base64,(.+)$/);
-    if (!match) {
-      throw new Error("Invalid image format. Please upload a valid image file.");
-    }
-    const mimeType = match[1];
-    const data = match[2];
-
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: [
+    const response = await groq.chat.completions.create({
+      model: "llama-3.2-11b-vision-preview",
+      messages: [
         {
-          parts: [
-            { text: `Analyze this chart for a High-Probability SMC Sniper Entry. Identify Pair, Timeframe, and Market Session. Current UTC: ${currentUtcTime}. Requirements: Focus on ZERO-DRAWDOWN setups, use SMC, identify CHoCH after Liquidity Sweep. Provide Entry, SL, and 3 TPs with visual Y-coordinates (0-1). Identify 2-3 Candlestick Patterns with X/Y coordinates (0-1). System Instructions: ${systemPrompt}` },
+          role: "system",
+          content: systemPrompt
+        },
+        {
+          role: "user",
+          content: [
             {
-              inlineData: {
-                mimeType,
-                data
+              type: "text",
+              text: `Analyze this chart for a High-Probability SMC Sniper Entry. Identify Pair, Timeframe, and Market Session. Current UTC: ${currentUtcTime}. Requirements: Focus on ZERO-DRAWDOWN setups, use SMC, identify CHoCH after Liquidity Sweep. Provide Entry, SL, and 3 TPs with visual Y-coordinates (0-1). Identify 2-3 Candlestick Patterns with X/Y coordinates (0-1).`
+            },
+            {
+              type: "image_url",
+              image_url: {
+                url: imageBase64
               }
             }
           ]
         }
       ],
-      config: {
-        responseMimeType: "application/json",
-        temperature: 0.2,
-      },
+      response_format: { type: "json_object" },
+      temperature: 0.2,
     });
 
-    const text = response.text;
+    const text = response.choices[0]?.message?.content;
     if (!text) {
       throw new Error("The AI returned an empty response.");
     }
 
     return JSON.parse(text);
   } catch (error: any) {
-    console.error("Gemini API Error:", error);
+    console.error("Groq API Error:", error);
     throw new Error(error.message || "An unexpected error occurred during analysis.");
   }
 };
