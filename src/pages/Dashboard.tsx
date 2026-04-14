@@ -56,7 +56,7 @@ export function Dashboard({ user, profile, history, currentPrices, onUpdateProfi
 
   useEffect(() => {
     const checkKey = () => {
-      const hasKey = !!process.env.GROQ_API_KEY;
+      const hasKey = !!process.env.VITE_GROQ_API_KEY;
       setHasApiKey(hasKey);
     };
     checkKey();
@@ -65,7 +65,7 @@ export function Dashboard({ user, profile, history, currentPrices, onUpdateProfi
   const pairs = ['AUTO', 'XAUUSD', 'GBPJPY', 'GBPUSD', 'EURUSD', 'BTCUSD', 'ETHUSD', 'V75', 'BOOM1000', 'CRASH500'];
 
   const handleSelectKey = () => {
-    toast.info("To add your Groq API key, go to the 'Secrets' panel in AI Studio and add a secret named 'GROQ_API_KEY'.");
+    toast.info("To add your Groq API key, go to Vercel project Settings → Environment Variables and add VITE_GROQ_API_KEY.");
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {

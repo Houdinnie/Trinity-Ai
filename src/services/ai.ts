@@ -2,7 +2,7 @@ import Groq from "groq-sdk";
 import { UserProfile, AnalysisRecord } from "../types";
 
 export const analyzeChart = async (imageBase64: string, pair: string, timeframe: string = "1h", userProfile?: UserProfile, recentHistory?: AnalysisRecord[]) => {
-  const apiKey = process.env.GROQ_API_KEY;
+  const apiKey = process.env.VITE_GROQ_API_KEY;
   
   if (!apiKey) {
     throw new Error("Groq API key is missing. Please add GROQ_API_KEY to your secrets.");
