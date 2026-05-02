@@ -135,6 +135,45 @@ const tutorials: Tutorial[] = [
       outcome: 'Entering on the 5m CHoCH allowed for a stop-loss of only $100 on BTC, resulting in a 1:12 RR trade as price hit the Daily target.',
       image: 'https://images.unsplash.com/photo-1518546305927-5a555bb7020d?auto=format&fit=crop&q=80&w=800'
     }
+  },
+  {
+    id: 'quasimodo-sweeps',
+    title: 'Quasimodo & Sweeps',
+    description: 'Master the high-probability "QM" reversal model and institutional liquidity hunts.',
+    icon: Target,
+    steps: [
+      {
+        title: 'Liquidity Sweeps',
+        content: 'A sweep occurs when price takes out a "Retail Level" (Equal Highs/Lows or a clear structural low/high) to activate stop losses. Institutions use this "Sweep" to generate the orders needed to move the market in the real direction.',
+        tip: 'Sweeps often look like "wick rejections" on higher timeframes.'
+      },
+      {
+        title: 'The Quasimodo (QM) Pattern',
+        content: 'The pattern follows a specific logic: 1. High, 2. Low, 3. Higher High (Hunchback/Head - sweeps liquidity), 4. Lower Low (Breaks structure). This sequence proves institutions have trapped buyers and are ready to sell.',
+        tip: 'Quasimodo comes from a fictional character with a hunchback - the "Head" of the pattern.'
+      },
+      {
+        title: 'The Quasimodo Level (QML)',
+        content: 'Your execution entry is the "Left Shoulder" level (the level of the first high/low). We wait for price to return to this QML after the Lower Low is formed. This is the "Sniper Entry" point.',
+        tip: 'Coupled with an unmitigated Order Block, the QML is extremely powerful.'
+      },
+      {
+        title: 'MPL (Maximum Pain Level)',
+        content: 'The MPL is a "Zero Drawdown" zone within the QML. It is the exact point where price spikes to hunt the last remaining stop losses of those entering early at the Left Shoulder. Identifying the MPL allows for the tightest possible stop losses.',
+        tip: 'Look for a small consolidation or "spike" exactly at the QML for the MPL entry.'
+      },
+      {
+        title: 'Risk & Execution',
+        content: 'Stop Loss goes above the "Head" (the Hunchback). Take Profit is the newest structural Lower Low. This provides a clear, high-probability trade with defined boundaries.',
+        tip: 'Always ensure there is an imbalance (FVG) leading away from the QM head.'
+      }
+    ],
+    caseStudy: {
+      title: 'XAUUSD Reverse QML',
+      description: 'Gold was bullish. It created a high, swept it with a "Hunchback" move, then crashed through the previous low (BOS). Price retraced perfectly to the Left Shoulder level.',
+      outcome: 'Entering at the QML resulted in a 1:8 RR trade with zero drawdown as price hit the structural low target.',
+      image: 'https://images.unsplash.com/photo-1610373728347-c04a7ac120c6?auto=format&fit=crop&q=80&w=800'
+    }
   }
 ];
 

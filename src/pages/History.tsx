@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { History as HistoryIcon, Trash2, Calendar, TrendingUp, Target, Sparkles, MessageSquare, Send, CheckCircle2, XCircle } from 'lucide-react';
+import { History as HistoryIcon, Trash2, Calendar, TrendingUp, Target, Sparkles, MessageSquare, Send, CheckCircle2, XCircle, PencilLine, Notebook, Save } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -10,6 +10,9 @@ import type { AnalysisRecord } from '../types';
 export function History({ user, history, onUpdateOutcome, onDeleteRecord }: { user: any; history: AnalysisRecord[]; onUpdateOutcome: (id: string, outcome: 'WIN' | 'LOSS') => Promise<void>; onDeleteRecord: (id: string) => Promise<void> }) {
   const [feedbackId, setFeedbackId] = useState<string | null>(null);
   const [feedbackText, setFeedbackText] = useState('');
+  
+  const [editingNotesId, setEditingNotesId] = useState<string | null>(null);
+  const [notesText, setNotesText] = useState('');
 
   const handleSendFeedback = async (id: string) => {
     if (!feedbackText.trim()) return;
@@ -22,6 +25,18 @@ export function History({ user, history, onUpdateOutcome, onDeleteRecord }: { us
     } catch (err) {
       console.error("Failed to send feedback:", err);
       toast.error("Failed to send feedback.");
+    }
+  };
+
+  const handleUpdateNotes = async (id: string) => {
+    try {
+      const recordRef = doc(db, 'analyses', id);
+      await updateDoc(recordRef, { notes: notesText });
+      setEditingNotesId(null);
+      toast.success("Trading notes updated.");
+    } catch (err) {
+      console.error("Failed to update notes:", err);
+      toast.error("Failed to update notes.");
     }
   };
 
@@ -145,6 +160,60 @@ export function History({ user, history, onUpdateOutcome, onDeleteRecord }: { us
 
                     <div className="p-4 bg-white/5 rounded-2xl border border-white/10">
                       <p className="text-sm text-gray-400 leading-relaxed italic">"{result.sniperEntry.reasoning}"</p>
+                    </div>
+
+                    {/* Trading Notes Section */}
+                    <div className="pt-4 border-t border-white/5 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-gray-400">
+                          <Notebook className="w-4 h-4" />
+                          <span className="text-xs font-bold uppercase tracking-widest">Trading Notes</span>
+                        </div>
+                        {editingNotesId !== record.id && (
+                          <button 
+                            onClick={() => {
+                              setEditingNotesId(record.id!);
+                              setNotesText(record.notes || '');
+                            }}
+                            className="text-[10px] font-black uppercase tracking-widest text-orange-500 hover:text-orange-400 flex items-center gap-1 transition-colors"
+                          >
+                            <PencilLine className="w-3 h-3" />
+                            {record.notes ? 'Edit Notes' : 'Add Notes'}
+                          </button>
+                        )}
+                      </div>
+
+                      {editingNotesId === record.id ? (
+                        <div className="space-y-3">
+                          <textarea 
+                            value={notesText}
+                            onChange={(e) => setNotesText(e.target.value)}
+                            placeholder="Add your own observations, execution details, or lessons learned..."
+                            className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm outline-none focus:border-orange-500/50 transition-all resize-none min-h-[80px]"
+                          />
+                          <div className="flex justify-end gap-2">
+                            <button 
+                              onClick={() => setEditingNotesId(null)}
+                              className="px-4 py-1.5 text-[10px] font-black uppercase tracking-widest text-gray-500 hover:text-white transition-colors"
+                            >
+                              Cancel
+                            </button>
+                            <button 
+                              onClick={() => handleUpdateNotes(record.id!)}
+                              className="px-4 py-1.5 bg-orange-500/10 hover:bg-orange-500/20 text-orange-400 rounded-lg text-[10px] font-black uppercase tracking-widest border border-orange-500/20 transition-all flex items-center gap-1.5"
+                            >
+                              <Save className="w-3 h-3" />
+                              Save Notes
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        record.notes && (
+                          <div className="p-4 bg-orange-500/5 rounded-2xl border border-orange-500/10">
+                            <p className="text-sm text-gray-300 leading-relaxed">{record.notes}</p>
+                          </div>
+                        )
+                      )}
                     </div>
 
                     {/* AI Feedback Section */}

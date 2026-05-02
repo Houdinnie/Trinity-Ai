@@ -55,7 +55,7 @@ export function LiveChart({ result, pair, analysisId, userProfile, onUpdateProfi
   const [performanceMode, setPerformanceMode] = useState(false);
   const [sessionInfo, setSessionInfo] = useState({ name: 'Off-Peak', weight: 1, color: 'gray' });
   const [simulatedTrades, setSimulatedTrades] = useState<SimulatedTrade[]>([]);
-  const [activeTab, setActiveTab] = useState<'chart' | 'history' | 'trades'>('chart');
+  const [activeTab, setActiveTab] = useState<'chart' | 'history' | 'trades' | 'info'>('chart');
   const [showTradeModal, setShowTradeModal] = useState(false);
   const tradeLinesRef = useRef<{ [tradeId: string]: any[] }>({});
   const [tradeType, setTradeType] = useState<'LONG' | 'SHORT'>('LONG');
@@ -66,6 +66,14 @@ export function LiveChart({ result, pair, analysisId, userProfile, onUpdateProfi
   const [tradeNotes, setTradeNotes] = useState('');
   const [editingTradeId, setEditingTradeId] = useState<string | null>(null);
   const [editingNotes, setEditingNotes] = useState('');
+  const previewLinesRef = useRef<any[]>([]);
+
+  const activePairTrades = simulatedTrades.filter(t => t.status === 'OPEN' && t.pair === pair);
+  // Accurate P&L calculation based on current price feed
+  const totalActivePnl = activePairTrades.reduce((acc, t) => {
+    const { pnl } = calculatePnl(t, currentPrice || t.entryPrice);
+    return acc + pnl;
+  }, 0);
 
   const quillModules = {
     toolbar: [
@@ -123,6 +131,51 @@ export function LiveChart({ result, pair, analysisId, userProfile, onUpdateProfi
 
     return () => unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (!seriesRef.current || !chartRef.current) return;
+
+    // Clear old preview lines
+    previewLinesRef.current.forEach(line => {
+      try {
+        seriesRef.current.removePriceLine(line);
+      } catch (e) {}
+    });
+    previewLinesRef.current = [];
+
+    if (showTradeModal) {
+      const rr = Math.abs(takeProfit - entryPrice) / Math.abs(entryPrice - stopLoss) || 0;
+      
+      const entryLine = seriesRef.current.createPriceLine({
+        price: entryPrice,
+        color: '#3b82f6',
+        lineWidth: 2,
+        lineStyle: 1,
+        axisLabelVisible: true,
+        title: `PREVIEW ENTRY (R/R: ${rr.toFixed(2)})`,
+      });
+
+      const slLine = seriesRef.current.createPriceLine({
+        price: stopLoss,
+        color: '#ef4444',
+        lineWidth: 1,
+        lineStyle: 2,
+        axisLabelVisible: true,
+        title: 'PREVIEW SL',
+      });
+
+      const tpLine = seriesRef.current.createPriceLine({
+        price: takeProfit,
+        color: '#22c55e',
+        lineWidth: 1,
+        lineStyle: 2,
+        axisLabelVisible: true,
+        title: 'PREVIEW TP',
+      });
+
+      previewLinesRef.current = [entryLine, slLine, tpLine];
+    }
+  }, [showTradeModal, entryPrice, stopLoss, takeProfit]);
 
   useEffect(() => {
     if (!seriesRef.current || !chartRef.current) return;
@@ -543,9 +596,12 @@ export function LiveChart({ result, pair, analysisId, userProfile, onUpdateProfi
     { label: '1m', value: '1m' },
     { label: '5m', value: '5m' },
     { label: '15m', value: '15m' },
+    { label: '30m', value: '30m' },
     { label: '1h', value: '1h' },
     { label: '4h', value: '4h' },
     { label: '1d', value: '1d' },
+    { label: '1w', value: '1w' },
+    { label: '1M', value: '1M' },
   ];
 
   useEffect(() => {
@@ -747,7 +803,17 @@ export function LiveChart({ result, pair, analysisId, userProfile, onUpdateProfi
     // Generate mock data based on current price if real data fails
     const generateMockData = (count = 500, basePrice?: number) => {
       const data: CandlestickData[] = [];
-      const intervalMap: Record<string, number> = { '15m': 900, '1h': 3600, '4h': 14400, '1d': 86400 };
+      const intervalMap: Record<string, number> = { 
+        '1m': 60,
+        '5m': 300,
+        '15m': 900, 
+        '30m': 1800,
+        '1h': 3600, 
+        '4h': 14400, 
+        '1d': 86400,
+        '1w': 604800,
+        '1M': 2592000
+      };
       const seconds = intervalMap[timeframe] || 3600;
       
       let time = Math.floor(Date.now() / 1000) - count * seconds;
@@ -927,9 +993,12 @@ export function LiveChart({ result, pair, analysisId, userProfile, onUpdateProfi
             '1m': 60, 
             '5m': 300, 
             '15m': 900, 
+            '30m': 1800,
             '1h': 3600, 
             '4h': 14400, 
-            '1d': 86400 
+            '1d': 86400,
+            '1w': 604800,
+            '1M': 2592000
           };
           const granularity = intervalMap[timeframe] || 3600;
 
@@ -1134,16 +1203,34 @@ export function LiveChart({ result, pair, analysisId, userProfile, onUpdateProfi
 
           setAllIndicators(currentIndicators);
 
-          // Add Markers for Candlestick Patterns and Stop Hunts
+          // Add Markers for Candlestick Patterns, LZS Indicators and Stop Hunts
           const markers: any[] = [];
           if (result.candlestickPatterns) {
             result.candlestickPatterns.forEach((pattern, i) => {
               markers.push({
                 time: (Math.floor(Date.now() / 1000) - (10 - i) * 3600) as UTCTimestamp, // Mock placement
                 position: pattern.type === 'BULLISH' ? 'belowBar' : 'aboveBar' as any,
-                color: pattern.type === 'BULLISH' ? '#22c55e' : pattern.type === 'BEARISH' ? '#ef4444' : '#94a3b8',
+                color: pattern.type === 'BULLISH' ? '#22c55e' : '#ef4444',
                 shape: 'arrowUp' as any,
                 text: pattern.name,
+              });
+            });
+          }
+
+          if (result.lzsIndicators) {
+            result.lzsIndicators.forEach((indicator, i) => {
+              const color = indicator.type === 'CT_AOL' ? '#3b82f6' : 
+                          indicator.type === 'ST1_SHIFT' ? '#a855f7' : 
+                          indicator.type === 'QML' ? '#d946ef' :
+                          indicator.type === 'MPL' ? '#22c55e' :
+                          indicator.type === 'LIQUIDITY_SWEEP' ? '#ef4444' :
+                          '#f97316';
+              markers.push({
+                time: (Math.floor(Date.now() / 1000) - (5 - i) * 3600) as UTCTimestamp, // Mock placement for live feed
+                position: indicator.type === 'CT_AOL' || indicator.type === 'QML' || indicator.type === 'MPL' ? 'aboveBar' : 'belowBar' as any,
+                color: color,
+                shape: (indicator.type === 'QML' || indicator.type === 'MPL') ? 'pin' : 'star' as any,
+                text: indicator.context ? `${indicator.name} (${indicator.context})` : indicator.name,
               });
             });
           }
@@ -1241,7 +1328,17 @@ export function LiveChart({ result, pair, analysisId, userProfile, onUpdateProfi
             subscribe: 1
           }));
         };
-        const intervalMap: Record<string, number> = { '15m': 900, '1h': 3600, '4h': 14400, '1d': 86400 };
+        const intervalMap: Record<string, number> = { 
+          '1m': 60,
+          '5m': 300,
+          '15m': 900, 
+          '30m': 1800,
+          '1h': 3600, 
+          '4h': 14400, 
+          '1d': 86400,
+          '1w': 604800,
+          '1M': 2592000
+        };
         const granularity = intervalMap[timeframe] || 3600;
 
         ws.onmessage = (msg) => {
@@ -1350,6 +1447,35 @@ export function LiveChart({ result, pair, analysisId, userProfile, onUpdateProfi
       }
     });
 
+    // Add LZS Indicators
+    result.lzsIndicators?.forEach((indicator) => {
+      if (indicator.price) {
+        let color = '#f97316'; // Default orange
+        let lineWidth = 1;
+
+        if (indicator.type === 'CT_AOL') color = '#3b82f6';
+        if (indicator.type === 'ST1_SHIFT') color = '#a855f7';
+        if (indicator.type === 'QML') {
+          color = '#d946ef'; // Magenta for QML
+          lineWidth = 2; // Stronger line for QML
+        }
+        if (indicator.type === 'MPL') {
+          color = '#22c55e'; // Green for Maximum Pain Level (Zero Drawdown)
+          lineWidth = 2;
+        }
+        if (indicator.type === 'LIQUIDITY_SWEEP') color = '#ef4444';
+        
+        candlestickSeries.createPriceLine({
+          price: indicator.price,
+          color: color,
+          lineWidth: lineWidth,
+          lineStyle: (indicator.type === 'QML' || indicator.type === 'MPL') ? 0 : 2, // Solid for QM/MPL, Dashed others
+          axisLabelVisible: true,
+          title: `${indicator.name} ${indicator.type === 'MPL' ? '(Zero Drawdown)' : '(LZS)'}${indicator.context ? `: ${indicator.context}` : ''}`,
+        });
+      }
+    });
+
     // Add Drawing Lines
     drawingLines.forEach((price, index) => {
       candlestickSeries.createPriceLine({
@@ -1373,51 +1499,6 @@ export function LiveChart({ result, pair, analysisId, userProfile, onUpdateProfi
     <div className="relative w-full h-full group">
       <div ref={chartContainerRef} className="w-full h-full" />
       
-      {/* Tooltip */}
-      {hoveredIndicator && (
-        <div 
-          className="absolute z-50 p-4 bg-black/90 border border-white/20 rounded-xl backdrop-blur-xl shadow-2xl pointer-events-none animate-in fade-in zoom-in duration-200"
-          style={{ 
-            left: tooltipPos.x + 20, 
-            top: tooltipPos.y - 40,
-            maxWidth: '280px'
-          }}
-        >
-          <div className="flex items-center gap-2 mb-2">
-            <div className={cn(
-              "p-1.5 rounded-lg",
-              hoveredIndicator.subType === 'BULLISH' ? "bg-green-500/20 text-green-400" :
-              hoveredIndicator.subType === 'BEARISH' ? "bg-red-500/20 text-red-400" :
-              "bg-purple-500/20 text-purple-400"
-            )}>
-              {hoveredIndicator.type === 'OB' ? <Box className="w-4 h-4" /> :
-               hoveredIndicator.type === 'FVG' ? <Layers className="w-4 h-4" /> :
-               hoveredIndicator.type === 'MSS' ? <Zap className="w-4 h-4" /> :
-               hoveredIndicator.type === 'STOP_HUNT' ? <Target className="w-4 h-4" /> :
-               <MousePointer2 className="w-4 h-4" />}
-            </div>
-            <div>
-              <h4 className="text-xs font-black uppercase tracking-tighter text-white">
-                {hoveredIndicator.subType} {hoveredIndicator.type.replace('_', ' ')}
-              </h4>
-              <p className="text-[10px] text-white/40 font-mono">
-                Price: {hoveredIndicator.top.toLocaleString()}
-              </p>
-            </div>
-          </div>
-          <p className="text-[11px] leading-relaxed text-white/70 italic">
-            "{hoveredIndicator.significance}"
-          </p>
-          <div className="mt-3 pt-3 border-t border-white/10 flex items-center justify-between">
-            <span className="text-[9px] font-bold uppercase tracking-widest text-white/30">Trinity Analysis</span>
-            <div className="flex items-center gap-1 px-2 py-0.5 bg-orange-500/10 text-orange-400 rounded-full border border-orange-500/20">
-              <Zap className="w-2.5 h-2.5" />
-              <span className="text-[9px] font-black tracking-tighter">CONFIRMED</span>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Tooltip */}
       {hoveredIndicator && (
         <div 
@@ -1548,7 +1629,7 @@ export function LiveChart({ result, pair, analysisId, userProfile, onUpdateProfi
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-red-400/60">Stop Loss</label>
+                    <label className="text-[10px] font-black uppercase tracking-widest text-red-400/60">Stop Loss (Calculated)</label>
                     <input
                       type="number"
                       step="0.00000001"
@@ -1566,6 +1647,30 @@ export function LiveChart({ result, pair, analysisId, userProfile, onUpdateProfi
                       onChange={(e) => setTakeProfit(Number(e.target.value))}
                       className="w-full bg-green-500/5 border border-green-500/20 rounded-xl py-3 px-4 text-sm font-mono text-green-400 focus:outline-none focus:border-green-500/50 transition-all"
                     />
+                  </div>
+                </div>
+
+                <div className="p-4 bg-white/5 rounded-2xl border border-white/10 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex flex-col">
+                      <span className="text-[8px] font-bold uppercase tracking-widest text-white/40">Risk/Reward Ratio</span>
+                      <span className="text-sm font-black text-white">{(Math.abs(takeProfit - entryPrice) / Math.abs(entryPrice - stopLoss) || 0).toFixed(2)}</span>
+                    </div>
+                    <div className="flex flex-col items-end">
+                      <span className="text-[8px] font-bold uppercase tracking-widest text-white/40">Projected Profit</span>
+                      <span className="text-sm font-black text-green-400">+${(positionSize * Math.abs(takeProfit - entryPrice)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center justify-between pt-4 border-t border-white/5">
+                    <div className="flex flex-col">
+                      <span className="text-[8px] font-bold uppercase tracking-widest text-white/40">Total Risk</span>
+                      <span className="text-xs font-black text-red-500">-${(positionSize * Math.abs(entryPrice - stopLoss)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                    </div>
+                    <div className="flex flex-col items-end">
+                      <span className="text-[8px] font-bold uppercase tracking-widest text-white/40">Leverage Impact</span>
+                      <span className="text-[10px] font-bold text-white/60">{((Math.abs(takeProfit - entryPrice) / entryPrice) * 100).toFixed(2)}% move</span>
+                    </div>
                   </div>
                 </div>
 
@@ -1594,6 +1699,112 @@ export function LiveChart({ result, pair, analysisId, userProfile, onUpdateProfi
               >
                 Place {tradeType} Trade
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Strategy Info Panel */}
+      {activeTab === 'info' && (
+        <div className="absolute inset-y-0 right-0 w-full sm:w-96 z-40 bg-[#0a0a0a]/95 backdrop-blur-xl border-l border-white/10 flex flex-col shadow-2xl animate-in slide-in-from-right duration-300">
+          <div className="flex items-center justify-between p-6 border-b border-white/5 bg-white/5">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-purple-500/20 rounded-lg">
+                <Info className="w-5 h-5 text-purple-400" />
+              </div>
+              <div>
+                <h3 className="text-xs font-black uppercase tracking-widest text-white">Strategy Intel</h3>
+                <p className="text-[10px] text-white/40 font-bold uppercase tracking-tighter">QM & MPL Framework</p>
+              </div>
+            </div>
+            <button 
+              onClick={() => setActiveTab('chart')}
+              className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+            >
+              <X className="w-5 h-5 text-white/40" />
+            </button>
+          </div>
+
+          <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-8">
+            {/* QM Concept */}
+            <section className="space-y-4">
+              <div className="flex items-center gap-2 text-white">
+                <Target className="w-4 h-4 text-orange-500" />
+                <h4 className="text-[10px] font-black uppercase tracking-widest">Quasimodo (QM) Pattern</h4>
+              </div>
+              <div className="p-4 bg-white/5 rounded-2xl border border-white/10 space-y-3">
+                <p className="text-[11px] text-gray-400 leading-relaxed italic">
+                  "The Quasimodo pattern identifies a shift in market structure by catching the moment a series of Higher Highs (HH) and Higher Lows (HL) is broken by a Lower Low (LL)."
+                </p>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 rounded-full bg-orange-500" />
+                    <span className="text-[10px] text-white/80 font-bold uppercase">Logic: HH &rarr; LL</span>
+                  </div>
+                  <p className="text-[10px] text-gray-500 leading-relaxed">
+                    The "Head" or Hunchback sweeps liquidity. The subsequent break of the previous low (LL) confirms institutional intent.
+                  </p>
+                </div>
+                <div className="pt-3 border-t border-white/10">
+                  <span className="text-[9px] font-black uppercase tracking-widest text-orange-400">QML (Quasimodo Level)</span>
+                  <p className="text-[10px] text-gray-400 mt-1 leading-relaxed">
+                    The execution entry point located at the level of the original **Left Shoulder**.
+                  </p>
+                </div>
+              </div>
+            </section>
+
+            {/* MPL Concept */}
+            <section className="space-y-4">
+              <div className="flex items-center gap-2 text-white">
+                <ShieldAlert className="w-4 h-4 text-green-500" />
+                <h4 className="text-[10px] font-black uppercase tracking-widest">Maximum Pain Level (MPL)</h4>
+              </div>
+              <div className="p-4 bg-white/5 rounded-2xl border border-white/10 space-y-3">
+                <div className="flex items-center gap-2">
+                  <div className="px-2 py-0.5 bg-green-500/20 text-green-400 rounded text-[8px] font-black uppercase">Zero Drawdown</div>
+                </div>
+                <p className="text-[11px] text-gray-400 leading-relaxed italic">
+                  "The MPL is where both buyers and sellers get trapped, creating a concentrated cluster of liquidity exactly at the QML."
+                </p>
+                <p className="text-[10px] text-gray-500 leading-relaxed">
+                  Look for a small consolidation or "spike" within the QML. This spike hunts the last remaining stops before the move. Entering here minimizes drawdown significantly.
+                </p>
+              </div>
+            </section>
+
+            {/* Checklist */}
+            <section className="space-y-4">
+              <div className="flex items-center gap-2 text-white/40">
+                <CheckCircle2 className="w-4 h-4" />
+                <h4 className="text-[10px] font-black uppercase tracking-widest">Execution Checklist</h4>
+              </div>
+              <div className="grid grid-cols-1 gap-2">
+                {[
+                  { label: 'Identify Past Trick', desc: 'QM Pattern + MPL spike confirmed.', icon: History },
+                  { label: 'Verify The Process', desc: 'R1/R2 Fakeouts (Liquidity build-up).', icon: Layers },
+                  { label: 'Monitor The Approach', desc: 'Corrective compression vs aggressive spikes.', icon: Activity }
+                ].map((item, i) => (
+                  <div key={i} className="flex gap-3 p-3 bg-white/5 rounded-xl border border-white/5">
+                    <item.icon className="w-4 h-4 text-orange-500 shrink-0" />
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-[10px] font-black text-white">{item.label}</span>
+                      <span className="text-[10px] text-gray-500 leading-tight">{item.desc}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            {/* Warning Block */}
+            <div className="p-4 bg-red-500/10 rounded-2xl border border-red-500/20 flex gap-3">
+              <AlertCircle className="w-4 h-4 text-red-500 shrink-0" />
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-widest text-red-400">Institutional Warning</span>
+                <p className="text-[10px] text-red-400/60 leading-relaxed mt-1">
+                  Avoid entries if price approaches with massive high-volume "God Candles". This often indicates the zone will be violated. Look for a slow, corrective approach.
+                </p>
+              </div>
             </div>
           </div>
         </div>
@@ -1630,7 +1841,7 @@ export function LiveChart({ result, pair, analysisId, userProfile, onUpdateProfi
               </div>
             ) : (
               simulatedTrades.map((trade) => {
-                const { pnl, pnlPerc } = calculatePnl(trade, currentPrice || 0);
+                const { pnl, pnlPerc } = calculatePnl(trade, currentPrice || trade.entryPrice);
                 const isWin = trade.status === 'CLOSED' ? trade.outcome === 'WIN' : pnl >= 0;
                 
                 return (
@@ -1692,7 +1903,7 @@ export function LiveChart({ result, pair, analysisId, userProfile, onUpdateProfi
                       <div className="space-y-1">
                         <span className="text-[8px] font-bold uppercase tracking-widest text-white/20">Current/Exit</span>
                         <p className="text-[10px] font-black font-mono text-white/60">
-                          {(trade.status === 'CLOSED' ? (trade.type === 'LONG' ? trade.entryPrice + (trade.pnl || 0) : trade.entryPrice - (trade.pnl || 0)) : currentPrice)?.toLocaleString()}
+                          {(trade.status === 'CLOSED' ? (trade.type === 'LONG' ? trade.entryPrice + (trade.pnl || 0) : trade.entryPrice - (trade.pnl || 0)) : (currentPrice || trade.entryPrice))?.toLocaleString()}
                         </p>
                       </div>
                     </div>
@@ -1768,7 +1979,7 @@ export function LiveChart({ result, pair, analysisId, userProfile, onUpdateProfi
                       {trade.status === 'OPEN' && (
                         <button
                           onClick={() => {
-                            const { pnl, pnlPerc } = calculatePnl(trade, currentPrice || 0);
+                          const { pnl, pnlPerc } = calculatePnl(trade, currentPrice || trade.entryPrice);
                             closeTrade(trade.id!, pnl >= 0 ? 'WIN' : 'LOSS', pnl, pnlPerc);
                           }}
                           className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg text-[10px] font-black uppercase tracking-widest transition-all"
@@ -1797,6 +2008,21 @@ export function LiveChart({ result, pair, analysisId, userProfile, onUpdateProfi
                 )} />
                 <span className="text-xs font-bold font-mono">{pair}</span>
                 <span className="text-xs font-bold font-mono text-green-400">{currentPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 8 })}</span>
+              </div>
+            )}
+
+            {activePairTrades.length > 0 && (
+              <div className={cn(
+                "flex items-center gap-2 px-3 py-1 rounded-lg border backdrop-blur-md shadow-lg animate-in zoom-in duration-300",
+                totalActivePnl >= 0 ? "bg-green-500/10 text-green-400 border-green-500/20" : "bg-red-500/10 text-red-400 border-red-500/20"
+              )}>
+                <Activity className="w-3.5 h-3.5" />
+                <div className="flex flex-col">
+                  <span className="text-[8px] font-bold uppercase tracking-widest leading-none opacity-60">Open P&L</span>
+                  <span className="text-xs font-black font-mono leading-none mt-1">
+                    {totalActivePnl >= 0 ? '+' : ''}${totalActivePnl.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
+                </div>
               </div>
             )}
 
@@ -1899,6 +2125,17 @@ export function LiveChart({ result, pair, analysisId, userProfile, onUpdateProfi
               {simulatedTrades.filter(t => t.status === 'OPEN').length > 0 && (
                 <span className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
               )}
+            </button>
+
+            <button
+              onClick={() => setActiveTab(activeTab === 'info' ? 'chart' : 'info')}
+              className={cn(
+                "flex items-center gap-2 px-3 py-1 rounded-lg border backdrop-blur-md transition-all shadow-lg pointer-events-auto",
+                activeTab === 'info' ? "bg-purple-500/20 text-purple-400 border-purple-500/30" : "bg-black/60 text-gray-400 hover:text-white border-white/10"
+              )}
+            >
+              <Info className="w-3.5 h-3.5" />
+              <span className="text-[10px] font-bold uppercase tracking-widest">Strategy Info</span>
             </button>
 
             {comparisonPair && comparisonPrice && (

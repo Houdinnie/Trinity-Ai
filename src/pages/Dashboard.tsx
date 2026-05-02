@@ -33,6 +33,8 @@ import { RiskCalculator } from '../components/RiskCalculator';
 import { PriceAlerts } from '../components/PriceAlerts';
 import type { AnalysisResult, AnalysisRecord, UserProfile } from '../types';
 
+import Markdown from 'react-markdown';
+
 interface DashboardProps {
   user: any;
   profile: UserProfile | null;
@@ -56,16 +58,16 @@ export function Dashboard({ user, profile, history, currentPrices, onUpdateProfi
 
   useEffect(() => {
     const checkKey = () => {
-      const hasKey = !!process.env.VITE_GROQ_API_KEY;
+      const hasKey = !!import.meta.env.VITE_GROQ_API_KEY;
       setHasApiKey(hasKey);
     };
     checkKey();
   }, []);
 
-  const pairs = ['AUTO', 'XAUUSD', 'GBPJPY', 'GBPUSD', 'EURUSD', 'BTCUSD', 'ETHUSD', 'V75', 'BOOM1000', 'CRASH500'];
+  const pairs = ['AUTO', 'XAUUSD', 'GBPJPY', 'GBPUSD', 'EURUSD', 'USDJPY', 'NAS100', 'US30', 'BTCUSD', 'ETHUSD', 'SOLUSD', 'V75', 'V100', 'BOOM1000', 'CRASH500'];
 
   const handleSelectKey = () => {
-    toast.info("To add your Groq API key, go to Vercel project Settings → Environment Variables and add VITE_GROQ_API_KEY.");
+    toast.info("To add your Groq API key, go to the 'Secrets' panel in AI Studio and add a secret named 'VITE_GROQ_API_KEY'.");
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -107,7 +109,7 @@ export function Dashboard({ user, profile, history, currentPrices, onUpdateProfi
       const errorMessage = err.message || "Analysis failed. Please try again.";
       if (errorMessage.includes("API key not valid") || errorMessage.includes("Requested entity was not found") || errorMessage.includes("Groq API key is missing")) {
         setHasApiKey(false);
-        setUploadError("Groq API Key is missing or invalid. Please add GROQ_API_KEY to your secrets.");
+        setUploadError("Groq API Key is missing or invalid. Please add VITE_GROQ_API_KEY to your secrets.");
       } else {
         setUploadError(`Analysis Error: ${errorMessage}`);
       }
@@ -208,8 +210,8 @@ export function Dashboard({ user, profile, history, currentPrices, onUpdateProfi
 
             <div>
               <label className="block text-sm font-medium text-gray-400 mb-2">Select Timeframe</label>
-              <div className="grid grid-cols-4 gap-2">
-                {['15m', '1h', '4h', '1d'].map(tf => (
+              <div className="grid grid-cols-4 sm:grid-cols-5 gap-2">
+                {['1m', '5m', '15m', '30m', '1h', '4h', '1d', '1w', '1M'].map(tf => (
                   <button
                     key={tf}
                     onClick={() => setSelectedTimeframe(tf)}
@@ -348,7 +350,7 @@ export function Dashboard({ user, profile, history, currentPrices, onUpdateProfi
                       </span>
                     </div>
                     <p className="text-xs text-gray-400 truncate">
-                      {JSON.parse(record.result).trend}
+                      {JSON.parse(record.result).bias || JSON.parse(record.result).trend}
                     </p>
                     <div className="flex items-center justify-between mt-3">
                       <div className="flex items-center gap-1.5 bg-black/40 p-0.5 rounded-lg border border-white/5">
@@ -421,30 +423,30 @@ export function Dashboard({ user, profile, history, currentPrices, onUpdateProfi
                 </div>
                 <div className="relative z-10">
                   <div className="flex flex-wrap items-center gap-3 mb-4">
-                    <span className="px-3 py-1 bg-white/20 rounded-full text-[10px] sm:text-xs font-bold uppercase tracking-wider">Sniper Entry Triggered</span>
+                    <span className="px-3 py-1 bg-white/20 rounded-full text-[10px] sm:text-xs font-bold uppercase tracking-wider">{analysisResult.tradeType} Setup</span>
                     <div className="flex items-center gap-2 px-3 py-1 bg-black/20 rounded-full border border-white/10 backdrop-blur-md">
                       <Sparkles className="w-3 h-3 text-yellow-400" />
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-white/80">AI Confirmation</span>
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-white/80">Confluence {analysisResult.confluenceCount}/20+</span>
                       <span className={cn(
-                        "text-xs font-black",
-                        analysisResult.aiConfirmationScore >= 80 ? "text-green-400" :
-                        analysisResult.aiConfirmationScore >= 60 ? "text-yellow-400" :
+                        "ml-1 text-xs font-black",
+                        analysisResult.confluenceCount >= 8 ? "text-green-400" :
+                        analysisResult.confluenceCount >= 4 ? "text-yellow-400" :
                         "text-red-400"
                       )}>
-                        {analysisResult.aiConfirmationScore}%
+                        {analysisResult.confluenceCount >= 8 ? "HIGH CONVICTION" : "WAIT FOR CONFIRM"}
                       </span>
                     </div>
-                    {history.length > 0 && (
-                      <div className="flex items-center gap-2 px-3 py-1 bg-blue-500/20 rounded-full border border-blue-500/30 backdrop-blur-md">
-                        <Brain className="w-3 h-3 text-blue-400 animate-pulse" />
-                        <span className="text-[10px] font-bold uppercase tracking-widest text-blue-400">Trinity Learning Active</span>
-                      </div>
-                    )}
                   </div>
+                  
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
-                    <h3 className="text-2xl sm:text-4xl font-black">
-                      {analysisResult.identifiedPair || selectedPair} SETUP
-                    </h3>
+                    <div>
+                      <h3 className="text-2xl sm:text-4xl font-black">
+                        {analysisResult.bias.toUpperCase()} {analysisResult.identifiedPair || selectedPair}
+                      </h3>
+                      <p className="text-xs sm:text-sm font-bold text-white/60 mt-1 uppercase tracking-widest">
+                        {analysisResult.tradeType} • Institutional Flow
+                      </p>
+                    </div>
                     {derivUrl && (
                       <a 
                         href={derivUrl} 
@@ -460,7 +462,7 @@ export function Dashboard({ user, profile, history, currentPrices, onUpdateProfi
                   
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
                     <div className="bg-black/20 backdrop-blur-md rounded-2xl p-4 border border-white/10">
-                      <p className="text-[10px] sm:text-xs text-white/60 uppercase font-bold mb-1">Entry Zone</p>
+                      <p className="text-[10px] sm:text-xs text-white/60 uppercase font-bold mb-1">Sniper Entry</p>
                       <p className="text-xl sm:text-2xl font-black">{analysisResult.sniperEntry.entry}</p>
                     </div>
                     <div className="bg-black/20 backdrop-blur-md rounded-2xl p-4 border border-white/10">
@@ -470,7 +472,7 @@ export function Dashboard({ user, profile, history, currentPrices, onUpdateProfi
                     {analysisResult.sniperEntry.takeProfits.map((tp, i) => (
                       <div key={i} className="bg-black/20 backdrop-blur-md rounded-2xl p-4 border border-white/10">
                         <div className="flex justify-between items-start mb-1">
-                          <p className="text-[10px] sm:text-xs text-white/60 uppercase font-bold">Take Profit {i + 1}</p>
+                          <p className="text-[10px] sm:text-xs text-white/60 uppercase font-bold">TP {i + 1}</p>
                           <span className="text-[8px] sm:text-[10px] bg-green-500/20 text-green-400 px-1.5 py-0.5 rounded font-bold">RR {tp.rrRatio}</span>
                         </div>
                         <p className="text-xl sm:text-2xl font-black text-green-200">{tp.price}</p>
@@ -479,8 +481,9 @@ export function Dashboard({ user, profile, history, currentPrices, onUpdateProfi
                   </div>
                   
                   <div className="mt-8 p-4 bg-black/20 rounded-2xl border border-white/10">
+                    <p className="text-[10px] text-white/40 uppercase font-black mb-2 tracking-widest">Small Account Note</p>
                     <p className="text-sm font-medium leading-relaxed italic">
-                      "{analysisResult.sniperEntry.reasoning}"
+                      "{analysisResult.sniperEntry.smallAccountNote}"
                     </p>
                   </div>
 
@@ -552,77 +555,24 @@ export function Dashboard({ user, profile, history, currentPrices, onUpdateProfi
                 />
               </div>
 
-              {/* Detailed Analysis Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-                <div className="bg-white/5 rounded-3xl border border-white/10 p-6">
-                  <h4 className="font-bold mb-4 flex items-center gap-2 text-orange-500">
-                    <TrendingUp className="w-5 h-5" />
-                    Market Context
-                  </h4>
-                  <div className="space-y-4">
-                    <div className="flex gap-4">
-                      <div className="flex-1 p-3 bg-white/5 rounded-xl border border-white/10">
-                        <p className="text-[10px] text-gray-500 uppercase font-bold mb-1">Active Session</p>
-                        <p className="text-sm font-bold">{analysisResult.marketSession}</p>
-                      </div>
-                      <div className="flex-1 p-3 bg-white/5 rounded-xl border border-white/10">
-                        <p className="text-[10px] text-gray-500 uppercase font-bold mb-1">Condition</p>
-                        <p className="text-sm font-bold">{analysisResult.marketCondition}</p>
-                      </div>
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-500 uppercase font-bold mb-1">Trend & Momentum</p>
-                      <p className="text-sm leading-relaxed">{analysisResult.trend}</p>
-                      <p className="text-sm text-gray-400 mt-2">{analysisResult.momentum}</p>
-                    </div>
+              {/* Detailed Markdown Analysis */}
+              <div className="bg-white/5 rounded-3xl border border-white/10 p-6 sm:p-8 backdrop-blur-sm">
+                <div className="flex items-center gap-3 mb-6 pb-6 border-b border-white/5">
+                  <div className="p-2 bg-orange-500/10 rounded-lg">
+                    <BookOpen className="w-5 h-5 text-orange-500" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-lg">Institutional Analysis</h4>
+                    <p className="text-[10px] text-gray-500 uppercase font-bold tracking-widest">Rule-Based Strategy (LZS + CRT + MSNR)</p>
                   </div>
                 </div>
-
-                <div className="bg-white/5 rounded-3xl border border-white/10 p-6">
-                  <h4 className="font-bold mb-4 flex items-center gap-2 text-orange-500">
-                    <Brain className="w-5 h-5" />
-                    AI Predictive Intelligence
-                  </h4>
-                  <div className="space-y-6">
-                    <div className="flex items-center justify-center py-4 border-b border-white/5">
-                      <div className="text-center">
-                        <p className="text-[10px] text-gray-500 uppercase font-bold mb-3">Overall AI Confirmation</p>
-                        <div className="relative inline-flex items-center justify-center">
-                          <svg className="w-20 h-20 sm:w-24 sm:h-24 transform -rotate-90" viewBox="0 0 100 100">
-                            <circle 
-                              cx="50" 
-                              cy="50" 
-                              r="45" 
-                              stroke="currentColor" 
-                              strokeWidth="8" 
-                              fill="transparent" 
-                              className="text-white/5" 
-                            />
-                            <circle 
-                              cx="50" 
-                              cy="50" 
-                              r="45" 
-                              stroke="currentColor" 
-                              strokeWidth="8" 
-                              fill="transparent" 
-                              strokeDasharray={282.7} 
-                              strokeDashoffset={282.7 * (1 - analysisResult.aiConfirmationScore / 100)} 
-                              className={cn(
-                                "transition-all duration-1000",
-                                analysisResult.aiConfirmationScore >= 80 ? "text-green-500" :
-                                analysisResult.aiConfirmationScore >= 60 ? "text-yellow-500" :
-                                "text-red-500"
-                              )} 
-                            />
-                          </svg>
-                          <div className="absolute flex flex-col items-center">
-                            <span className="text-xl sm:text-2xl font-black">{analysisResult.aiConfirmationScore}%</span>
-                            <span className="text-[8px] font-bold uppercase text-gray-500">Confidence</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                <div className="prose prose-invert max-w-none prose-sm sm:prose-base
+                  prose-headings:font-black prose-headings:uppercase prose-headings:tracking-wider
+                  prose-p:text-gray-300 prose-p:leading-relaxed
+                  prose-strong:text-orange-400 prose-strong:font-black
+                  prose-ul:list-inside prose-ul:list-disc prose-li:text-gray-400
+                ">
+                  <Markdown>{analysisResult.formattedAnalysis}</Markdown>
                 </div>
               </div>
             </motion.div>

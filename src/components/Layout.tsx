@@ -1,6 +1,7 @@
 import React from 'react';
 import { Navbar } from './Navbar';
 import { Zap } from 'lucide-react';
+import { AIAssistant } from './AIAssistant';
 
 export function Layout({ children, user, onPriceUpdate }: { children: React.ReactNode, user: any, onPriceUpdate: (prices: Record<string, number>) => void }) {
   return (
@@ -10,6 +11,8 @@ export function Layout({ children, user, onPriceUpdate }: { children: React.Reac
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {children}
       </main>
+
+      <AIAssistant />
 
       <footer className="border-t border-white/10 py-12 mt-12 bg-black/30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc, setDoc, updateDoc, deleteDoc, query, collection, where, orderBy, onSnapshot } from 'firebase/firestore';
-import { db } from './firebase';
+import { auth, db } from './firebase';
 import { Toaster, toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
 import { Layout } from './components/Layout';
@@ -11,7 +12,6 @@ import { Academics } from './pages/Academics';
 import { Journal } from './pages/Journal';
 import { History } from './pages/History';
 import { Profile } from './pages/Profile';
-import { getGuestUser, getGuestProfile, updateGuestProfile } from './lib/guestAuth';
 import type { UserProfile, AnalysisRecord } from './types';
 
 export default function App() {
@@ -22,48 +22,63 @@ export default function App() {
   const [currentPrices, setCurrentPrices] = useState<Record<string, number>>({});
 
   useEffect(() => {
-    // Always use guest auth - no login required
-    const guestUser = getGuestUser();
-    const guestProfile = getGuestProfile();
-    setUser(guestUser);
-    setProfile(guestProfile);
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      setUser(user);
+      if (user) {
+        const profileRef = doc(db, 'users', user.uid);
+        const profileSnap = await getDoc(profileRef);
+        
+        if (profileSnap.exists()) {
+          setProfile(profileSnap.data() as UserProfile);
+        } else {
+          const newProfile: UserProfile = {
+            uid: user.uid,
+            email: user.email || '',
+            displayName: user.displayName || '',
+            photoURL: user.photoURL || '',
+            createdAt: new Date().toISOString(),
+            riskTolerance: 'MODERATE',
+            experienceLevel: 'BEGINNER',
+            tradingGoal: 'GROWTH',
+            aiSettings: {
+              breakoutSensitivity: 50,
+              reversalSensitivity: 50,
+              anomalySensitivity: 50
+            }
+          };
+          await setDoc(profileRef, newProfile);
+          setProfile(newProfile);
+        }
 
-    // Load history from Firestore using guest UID
-    const q = query(
-      collection(db, 'analyses'),
-      where('userId', '==', guestUser.uid),
-      orderBy('timestamp', 'desc')
-    );
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const records = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as AnalysisRecord[];
-      setHistory(records);
-    }, (error) => {
-      console.error('Firestore error:', error);
-      // Fallback to localStorage if Firestore fails
-      const localHistory = localStorage.getItem('trinity_history');
-      if (localHistory) {
-        setHistory(JSON.parse(localHistory));
+        const q = query(
+          collection(db, 'analyses'),
+          where('userId', '==', user.uid),
+          orderBy('timestamp', 'desc')
+        );
+        onSnapshot(q, (snapshot) => {
+          const records = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as AnalysisRecord[];
+          setHistory(records);
+        });
+      } else {
+        setProfile(null);
+        setHistory([]);
       }
+      setLoading(false);
     });
 
-    setLoading(false);
     return () => unsubscribe();
   }, []);
 
   const handleUpdateProfile = async (updates: Partial<UserProfile>) => {
+    if (!user) return;
     try {
       const profileRef = doc(db, 'users', user.uid);
       await updateDoc(profileRef, updates);
-      const updated = updateGuestProfile(updates);
-      setProfile(updated as UserProfile);
-      toast.success('Profile updated!');
+      setProfile(prev => prev ? { ...prev, ...updates } : null);
+      toast.success("Profile updated!");
     } catch (err) {
-      console.error('Failed to update profile:', err);
-      // Still update locally
-      const updated = updateGuestProfile(updates);
-      setProfile(updated as UserProfile);
-      toast.success('Profile updated locally!');
+      console.error("Failed to update profile:", err);
+      toast.error("Failed to update profile.");
     }
   };
 
@@ -73,23 +88,25 @@ export default function App() {
       await updateDoc(recordRef, { outcome });
       toast.success(`Marked as ${outcome}!`);
     } catch (err) {
-      console.error('Failed to update outcome:', err);
+      console.error("Failed to update outcome:", err);
+      toast.error("Failed to update outcome.");
     }
   };
 
   const handleDeleteRecord = async (id: string) => {
     try {
       await deleteDoc(doc(db, 'analyses', id));
-      toast.success('Analysis deleted.');
+      toast.success("Analysis deleted.");
     } catch (err) {
-      console.error('Failed to delete analysis:', err);
+      console.error("Failed to delete analysis:", err);
+      toast.error("Failed to delete analysis.");
     }
   };
 
   if (loading) {
     return (
-      <div className='min-h-screen bg-black flex items-center justify-center'>
-        <Loader2 className='w-12 h-12 text-orange-500 animate-spin' />
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <Loader2 className="w-12 h-12 text-orange-500 animate-spin" />
       </div>
     );
   }
@@ -99,7 +116,7 @@ export default function App() {
       <ErrorBoundary>
         <Layout user={user} onPriceUpdate={setCurrentPrices}>
           <Routes>
-            <Route path='/' element={
+            <Route path="/" element={
               <Dashboard 
                 user={user} 
                 profile={profile} 
@@ -110,9 +127,9 @@ export default function App() {
                 onDeleteRecord={handleDeleteRecord}
               />
             } />
-            <Route path='/academics' element={<Academics />} />
-            <Route path='/journal' element={<Journal user={user} />} />
-            <Route path='/history' element={
+            <Route path="/academics" element={<Academics />} />
+            <Route path="/journal" element={<Journal user={user} />} />
+            <Route path="/history" element={
               <History 
                 user={user} 
                 history={history} 
@@ -120,7 +137,7 @@ export default function App() {
                 onDeleteRecord={handleDeleteRecord} 
               />
             } />
-            <Route path='/profile' element={
+            <Route path="/profile" element={
               <Profile 
                 profile={profile} 
                 onUpdateProfile={handleUpdateProfile} 
@@ -128,7 +145,7 @@ export default function App() {
             } />
           </Routes>
         </Layout>
-        <Toaster position='top-right' theme='dark' />
+        <Toaster position="top-right" theme="dark" />
       </ErrorBoundary>
     </BrowserRouter>
   );

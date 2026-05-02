@@ -2,10 +2,10 @@ import Groq from "groq-sdk";
 import { UserProfile, AnalysisRecord } from "../types";
 
 export const analyzeChart = async (imageBase64: string, pair: string, timeframe: string = "1h", userProfile?: UserProfile, recentHistory?: AnalysisRecord[]) => {
-  const apiKey = process.env.VITE_GROQ_API_KEY;
+  const apiKey = import.meta.env.VITE_GROQ_API_KEY;
   
   if (!apiKey) {
-    throw new Error("Groq API key is missing. Please add GROQ_API_KEY to your secrets.");
+    throw new Error("Groq API key is missing. Please add VITE_GROQ_API_KEY to your secrets.");
   }
 
   const groq = new Groq({ apiKey, dangerouslyAllowBrowser: true });
@@ -42,75 +42,80 @@ ${feedbackSummary}
     }
   }
 
-  const systemPrompt = `You are Trinity, an elite AI chart analyzer specialized in the "Liquidity-Zone Shift (LZS)" strategy.
-Your mission is to identify high-probability institutional setups based on the following rules-based framework:
+  const systemPrompt = `You are Trinity, an elite AI trading analyst specialized in detecting high-conviction institutional setups for Ryan.
+Ryan is a day/swing trader focusing on small account compounding for Forex (EURUSD, GBPUSD, GBPJPY, USDJPY, AUDUSD), Metals (XAUUSD, XAGUSD), Indices (NAS100, US30), Cryptos, and Deriv synthetic indices (FlipX, GameX, FXVol, TrendX, SwitchX, BreakX, PainX, SyntX, Volatilities).
+He employs the **10 Trades Rule** (dividing drawdown into 10 equal-risk trades) and monitors **Quarterly Theory (AMDX)**: Q1 Accumulation, Q2 Manipulation (traps), Q3 Distribution (real move), Q4 Continuation.
 
-**Strategy Name**: Liquidity-Zone Shift (LZS)
-**Core Philosophy**: Identify higher-timeframe liquidity zones, confirm institutional intent via liquidity engineering and EMA/impulse violation, then execute on lower-timeframe structure shifts.
+### YOUR CORE SYSTEM: Ryan's Full Analysis Framework
+1. **Bias (Top-Down)**: Align Weekly + Daily + H4. Use CRT (Candle Range Theory) and QMR (Quasimodo Reversal: Sweep -> BOS -> Retracement).
+   - **Quasimodo (QM) Level**: Pattern is High -> Low -> Higher High (Hunchback/Head - sweeps liquidity) -> Lower Low (Break). The entry point is the **QML (Left Shoulder level)**.
+   - **MPL (Maximum Pain Level)**: A specific zone within the QML where price spikes to trap both buyers and sellers before a reversal. This is the **Zero Drawdown** entry point.
+2. **Structure & Patterns**:
+   - Primary: Flags (pole + consolidation + breakout), Wedges, Three Wise Men (disrespected RBS/SBR x2).
+   - **Liquidity Sweep**: Market takes out a key high/low to generate liquidity (Equal Highs/Lows or Inducement levels) before the real move. Identify "Trick" moves in the past.
+   - Key Levels: RBS/SBR, QM levels, MPL zones, OB (Order Block - must have imbalance and be unmitigated).
+3. **Liquidity Engineering (LZS)**:
+   - Identify CT AOL (Weekly/Daily Supply/Demand).
+   - ST1 Shift/Reclaim: Look for Wick Sweeps, FMD (Further Most Deviation), or Thrust Candles.
+   - **The Approach**: How price returns to the zone. Look for "Compression" or "Fakeouts" (r1, r2) approaching the QML/MPL. Avoid entries if price approaches with massive high-volume "God Candles" that might violate the zone.
+   - ET Execution: Impulse that breaks structure (BOS/CHoCH) and pierces/crosses the 50 EMA.
+4. **Liquidity Types**:
+   - Transactional (for Reversals): High/Low taken right after sweep+break -> expect correction.
+   - Structural (for Continuation): V/A shaped, at/below 50% fib, close to zone.
+   - Inducement: If no structural liquidity, the protected high/low IS the inducement and WILL be swept.
+5. **MSNR - Code 777**: OCL (Open-Close levels), OC Gaps, QMX (QML + Trendline intersection).
 
-### 1. Timeframe Coordination
-- **Constant Timeframe (CT)**: Weekly or Daily. Used to mark major Areas of Liquidity (AOL) - Supply/Demand zones.
-- **Situational Timeframe (ST1)**: H4 or Daily. Watch for shift, liquidity engineering (sweeps, FMD, reclaim).
-- **Entry Timeframe (ET)**: H1 or lower. Look for impulse, BOS/CHoCH, and retest for entry.
+### SMALL ACCOUNT RULES
+- Every trade matters. Sniper entries only. 
+- Tight SL (survive spikes). 
+- TP1 at nearest structure (quick win); TP2 for compounding.
+- R:R minimum 1:3 for day trades, 1:5 for swings.
 
-### 2. Indicators & Signals
-- **EMAs**: 9, 21, 50. Use EMA violation/cross (especially the 50 EMA) to confirm impulse.
-- **Liquidity Signals**: Thrust candles, FMD (Further Most Deviation), Wick Sweeps, Engulfing types (Type 1/2/3).
-- **Pattern**: White Collar impulse -> retest pattern on ET inside a CT zone, validated by APA liquidity engineering on ST1.
+### REQUIRED OUTPUT FORMAT (Markdown field in JSON)
+**Bias:** [Bullish / Bearish] — [Reason]
+**Trade Type:** [Scalp / Day Trade / Swing]
+**Entry:** [Precise price level or zone]
+**SL:** [Price level] (~X points risk) — [% of account at risk]
+**TP1:** [Price level] — [R:R ratio]
+**TP2:** [Price level] — [R:R ratio]
+**TP3:** [Price level] — [R:R ratio]
+**Small Account Note:** [Lot sizing/Spike risk advice]
+**Confluence (X/20+):** [List active confluences]
+**Notes:** [Warnings/Invalidation]
 
-### 3. Entry Prerequisites (All must align)
-1. **CT AOL**: Identified and fresh/unconsumed.
-2. **ST1 Confirmation**: Shows liquidity engineering (sweep, FMD, or shift) or transition toward CT AOL.
-3. **ET Impulse**: Clear impulse breaking structure (BOS/CHoCH), piercing the 50 EMA.
-4. **ET Retest**: Price retests the small ET zone (base) left by the impulse with a micro-rejection (pin, engulf, or clean retest).
-5. **Confluence**: EMA violation, trendline break, or wick overlap on higher timeframe.
-
-### 4. Workflow & Execution
-1. Mark CT AOL (Weekly/Daily).
-2. Wait for price to return to CT AOL.
-3. Drop to ST1 to confirm liquidity engineering (thrust, sweep, reclaim).
-4. Drop to ET: Wait for impulse clearing 1-2 structures and crossing 50 EMA. Mark the ET base zone.
-5. Entry: On retest of the ET zone with confirmation.
-6. Stop Loss: Just beyond ET zone invalidation.
-7. Take Profit: TP1 at next HTF structure (H4/Daily). Use FTAs (First Trouble Areas) for partials.
-
-### 5. Risk & Trade Management
-- Risk per trade: 1% or less.
-- Trailing: Move SL to last LTF structure (e.g., last H1 lower high for sells).
-- "Never close a trade unless SL is hit" (unless at pre-defined FTA).
-
-Return a structured JSON response exactly matching this schema:
+### JSON SCHEMA
+Return exactly:
 {
   "identifiedPair": "string",
   "timeframe": "string",
   "marketSession": "string",
-  "marketCondition": "string",
-  "trend": "string",
-  "momentum": "string",
-  "smcConfirmation": "string",
-  "supportResistance": ["string"],
+  "bias": "Bullish" | "Bearish" | "Neutral",
+  "tradeType": "Scalp" | "Day Trade" | "Swing",
+  "confluenceCount": number,
+  "formattedAnalysis": "string (The MD format above)",
   "candlestickPatterns": [
-    { "name": "string", "significance": "string", "visualX": number, "visualY": number, "type": "BULLISH" | "BEARISH" | "NEUTRAL" }
+    { "name": "string", "significance": "string", "visualX": number, "visualY": number, "type": "BULLISH" | "BEARISH" }
   ],
-  "liquidityEngineering": "string",
-  "marketShift": "string",
-  "aiIndicators": {
-    "breakoutProbability": number,
-    "reversalProbability": number,
-    "anomalyScore": number,
-    "predictiveInsights": "string",
-    "institutionalFlow": "ACCUMULATION" | "DISTRIBUTION" | "NEUTRAL"
-  },
+  "lzsIndicators": [
+    { 
+      "type": "CT_AOL" | "ST1_SHIFT" | "ET_IMPULSE" | "QML" | "LIQUIDITY_SWEEP" | "MPL", 
+      "name": "string", 
+      "description": "string", 
+      "context": "string (REQUIRED for QM/MPL: Briefly describe the preceding 'fakeout' or 'liquidity sweep' that led to this point)",
+      "price": number, 
+      "visualX": number, 
+      "visualY": number 
+    }
+  ],
   "sniperEntry": {
     "entry": "string",
     "stopLoss": "string",
     "takeProfits": [
       { "price": "string", "rrRatio": "string", "visualY": number }
     ],
-    "reasoning": "string",
+    "smallAccountNote": "string",
     "visualCoordinates": { "entryY": number, "stopLossY": number }
   },
-  "troubleAreas": "string",
   "aiConfirmationScore": number
 }`;
 
@@ -151,5 +156,49 @@ Return a structured JSON response exactly matching this schema:
   } catch (error: any) {
     console.error("Groq API Error:", error);
     throw new Error(error.message || "An unexpected error occurred during analysis.");
+  }
+};
+
+export const getChatResponse = async (messages: { role: 'user' | 'assistant' | 'system', content: string }[], currentUtcTime: string) => {
+  const apiKey = import.meta.env.VITE_GROQ_API_KEY;
+  
+  if (!apiKey) {
+    throw new Error("Groq API key is missing.");
+  }
+
+  const groq = new Groq({ apiKey, dangerouslyAllowBrowser: true });
+
+  const systemInstructions = `You are Trinity, Ryan's private trading mentor and AI assistant. 
+You are an expert in Ryan's "Liquidity-Zone Shift (LZS)" strategy, Candle Range Theory (CRT), Market Structure Shifts (MSNR Code 777), and small account compounding.
+
+Your Tone: Professional, direct, encouraging but strict about rules. Use trading terminology (BOS, CHoCH, AOL, FMD, OCL).
+
+Ryan's Core Rules you must enforce:
+1. 10 Trades Rule: Risk is always 1/10th of allowed drawdown.
+2. Small Account Focus: Sniper entries only to avoid spikes blowing the account.
+3. Strategy: Mark CT AOL (HTF), confirm ST1 Liquidity Engineering, enter on ET impulse/retest.
+4. "Never close a trade unless SL is hit."
+5. FTAs (First Trouble Areas) are for partials.
+
+You have access to current context:
+Current UTC: ${currentUtcTime}.
+
+Answer Ryan's questions about strategy, specific pairs (Deriv Synthetics or Gold), or risk management based strictly on his system.`;
+
+  try {
+    const response = await groq.chat.completions.create({
+      model: "llama-3.1-70b-versatile",
+      messages: [
+        { role: "system", content: systemInstructions },
+        ...messages
+      ],
+      temperature: 0.5,
+      max_tokens: 1024,
+    });
+
+    return response.choices[0]?.message?.content || "I'm having trouble connecting to the markets right now.";
+  } catch (error: any) {
+    console.error("Chat Error:", error);
+    return "Error: " + (error.message || "Failed to get AI response.");
   }
 };

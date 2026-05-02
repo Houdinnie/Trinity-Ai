@@ -179,7 +179,7 @@ export function ChartOverlay({ result, imageUrl, pair, analysisId, profile, onUp
                             cx={`${pattern.visualX * 100}%`} 
                             cy={`${pattern.visualY * 100}%`} 
                             r="6" 
-                            fill={pattern.type === 'BULLISH' ? '#22c55e' : pattern.type === 'BEARISH' ? '#ef4444' : '#94a3b8'} 
+                            fill={pattern.type === 'BULLISH' ? '#22c55e' : '#ef4444'} 
                             className="animate-pulse"
                           />
                           <rect 
@@ -202,6 +202,74 @@ export function ChartOverlay({ result, imageUrl, pair, analysisId, profile, onUp
                           >
                             {pattern.name}
                           </text>
+                        </g>
+                      ))}
+
+                      {/* LZS Indicators */}
+                      {result.lzsIndicators?.map((indicator, i) => (
+                        <g key={`lzs-${i}`}>
+                          <rect 
+                            x={`${indicator.visualX * 100 - 5}%`} 
+                            y={`${indicator.visualY * 100 - 2}%`} 
+                            width="10%" 
+                            height="4%" 
+                            fill={
+                              indicator.type === 'CT_AOL' ? '#3b82f6' : 
+                              indicator.type === 'ST1_SHIFT' ? '#a855f7' : 
+                              indicator.type === 'QML' ? '#d946ef' :
+                              indicator.type === 'LIQUIDITY_SWEEP' ? '#ef4444' :
+                              indicator.type === 'MPL' ? '#22c55e' :
+                              '#f97316'
+                            } 
+                            fillOpacity="0.2"
+                            stroke={
+                              indicator.type === 'CT_AOL' ? '#3b82f6' : 
+                              indicator.type === 'ST1_SHIFT' ? '#a855f7' : 
+                              indicator.type === 'QML' ? '#d946ef' :
+                              indicator.type === 'LIQUIDITY_SWEEP' ? '#ef4444' :
+                              indicator.type === 'MPL' ? '#22c55e' :
+                              '#f97316'
+                            }
+                            strokeWidth="1"
+                            strokeDasharray="2 2"
+                            rx="2"
+                          />
+                          <circle 
+                            cx={`${indicator.visualX * 100}%`} 
+                            cy={`${indicator.visualY * 100}%`} 
+                            r="4" 
+                            fill={
+                              indicator.type === 'CT_AOL' ? '#3b82f6' : 
+                              indicator.type === 'ST1_SHIFT' ? '#a855f7' : 
+                              indicator.type === 'QML' ? '#d946ef' :
+                              indicator.type === 'LIQUIDITY_SWEEP' ? '#ef4444' :
+                              indicator.type === 'MPL' ? '#22c55e' :
+                              '#f97316'
+                            } 
+                          />
+                          <text 
+                            x={`${indicator.visualX * 100}%`} 
+                            y={`${indicator.visualY * 100 + 15}%`} 
+                            fill="white" 
+                            fontSize="8" 
+                            fontWeight="black" 
+                            textAnchor="middle"
+                            className="uppercase tracking-tighter"
+                          >
+                            {indicator.name}
+                          </text>
+                          {indicator.context && (
+                            <text 
+                              x={`${indicator.visualX * 100}%`} 
+                              y={`${indicator.visualY * 100 + 25}%`} 
+                              fill="rgba(255,255,255,0.6)" 
+                              fontSize="6" 
+                              fontWeight="bold" 
+                              textAnchor="middle"
+                            >
+                              {indicator.context}
+                            </text>
+                          )}
                         </g>
                       ))}
                     </svg>
